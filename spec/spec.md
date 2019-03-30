@@ -154,7 +154,7 @@ $msg = payload || S_{sk_A}(payload)$
 
 $assoc\_data= channelID_{C}$
 
-$enc\_data= userID_A || ChanSeqNum_C || message\_text$
+$enc\_data= userID_A || SeqNum_C || message\_text$
 
 $msg = E_{K_{channel}}^{GCM}\bigl(assoc\_data, enc\_data || S_{sk_A}(assoc\_data || enc\_data)\bigr)$
 
@@ -163,5 +163,5 @@ $msg = E_{K_{channel}}^{GCM}\bigl(assoc\_data, enc\_data || S_{sk_A}(assoc\_data
 * The server broadcasts this message to all channel `C` participants.
 * Recipients check the following, and only accepts the message if all checks are successful:
 	* User `A` is part of the channel `C` 
-	* The `ChanSeqNum` is higher than all previous values in this channel 
+	* The $SeqNum_C$ is higher than all previous values in channel `C` 
 	* All MACs and signatures are valid
