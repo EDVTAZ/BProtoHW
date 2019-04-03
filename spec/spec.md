@@ -4,34 +4,6 @@
 **Juhász Márton** *GASYQY*  
 **Székely Gábor** *EDVTAZ*
 
-# Table of Contents
-
-- [Multi-party chat application specification](#multi-party-chat-application-specification)
-- [Table of Contents](#table-of-contents)
-- [Functional requirements](#functional-requirements)
-  - [Channels](#channels)
-  - [General usage](#general-usage)
-- [Attacker model](#attacker-model)
-  - [Goals of the attacker (including the server)](#goals-of-the-attacker-including-the-server)
-  - [Capabilities](#capabilities)
-- [Security requirements](#security-requirements)
-  - [Attacker that isn't part of any channel](#attacker-that-isnt-part-of-any-channel)
-  - [Attacker that is part of some channels](#attacker-that-is-part-of-some-channels)
-- [System architecture](#system-architecture)
-  - [Server](#server)
-  - [User](#user)
-  - [Channel](#channel)
-- [Cryptographic protocols](#cryptographic-protocols)
-  - [Message types](#message-types)
-    - [Add user to channel](#add-user-to-channel)
-    - [Communication message](#communication-message)
-- [Security Analysis](#security-analysis)
-  - [Recover private key of user](#recover-private-key-of-user)
-  - [Recover symmetric key of a channel](#recover-symmetric-key-of-a-channel)
-  - [Add user to arbitrary channel](#add-user-to-arbitrary-channel)
-  - [Read or send messages in arbitrary channel](#read-or-send-messages-in-arbitrary-channel)
-  - [Message forgery, modification and replay](#message-forgery-modification-and-replay)
-
 # Functional requirements
 
 In addition to the requirements defined in the homework handout, we specify the functional requirements in this section.
@@ -91,6 +63,21 @@ There are two types of entities in our system: server and user.
 The users communicate with each other through the server.
 Users can communicate with each other via channels: when a user sends a message to a channel, each user that is part of that channel will receive that message through the server.
 
+## Server
+
+Each time a client wants to send a message, it is sent to the server. The server's main message handler determines the message type, and acts accordingly: after performing some basic checks, broadcasting the message to all parties that need to receive it (i.e. the users that are part of the channel in question), and making a persistent copy of it, so offline users can later receive it.
+
+## User
+
+A user is identified by a unique user ID. Every user has a signing and an encryption key, and the public parts of these keys are pre-shared with each user, so it is known to each participant what user IDs belong to what public keys. Messages received by the user are stored locally. The private keys of the user are stored in persistent storage, encrypted with a secret password.
+
+## Channel
+
+A channel is identified by its channel ID. A channel holds the following information:
+* IDs of users that are part of the channel
+* For each user in the channel, the channel key (symmetric key), encrypted with her public encryption key
+* The messages that have been sent in the channel, encrypted with the channel key
+
 **Server architecture diagram**
 ```
 +--------+          +------------------------+
@@ -109,10 +96,6 @@ Users can communicate with each other via channels: when a user sends a message 
              +-------------+         |            |
                                      +------------+
 ```
-
-## Server
-
-Each time a client wants to send a message, it is sent to the server. The server's main message handler determines the message type, and acts accordingly: after performing some basic checks, broadcasting the message to all parties that need to receive it (i.e. the users that are part of the channel in question), and making a persistent copy of it, so offline users can later receive it.
 
 **Client architecture diagram**
 ```
@@ -143,17 +126,6 @@ Each time a client wants to send a message, it is sent to the server. The server
              +----------+       |            |
                                 +------------+
 ```
-
-## User
-
-A user is identified by a unique user ID. Every user has a signing and an encryption key, and the public parts of these keys are pre-shared with each user, so it is known to each participant what user IDs belong to what public keys. Messages received by the user are stored locally. The private keys of the user are stored in persistent storage, encrypted with a secret password.
-
-## Channel
-
-A channel is identified by its channel ID. A channel holds the following information:
-* IDs of users that are part of the channel
-* For each user in the channel, the channel key (symmetric key), encrypted with her public encryption key
-* The messages that have been sent in the channel, encrypted with the channel key
 
 # Cryptographic protocols
 
