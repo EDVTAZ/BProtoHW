@@ -9,3 +9,6 @@ class logo:
             | |                                                        
 v0.0.1      |_|                          by: @edvtaz, @???, @szilard95  
 '''[1:]
+
+
+SECURE_CHANNEL_KEY_SIZE_BYTES = 16

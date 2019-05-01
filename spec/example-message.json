@@ -1,0 +1,38 @@
+[
+    {
+        "type":"addUser",
+        "inviter":"userIDa",
+        "invitee":"userIDb",
+        "channelID":"channelID",
+        "channelKey":"AAAA====",
+        "signature":"BBBB===="
+    },
+    {
+        "type":"comms",
+        "nonce":123213,
+        "channelID":"channelID",
+        "channelSeq":123213,
+        "userID":"userIDa",
+        "userSeq":123123,
+        "msg":"AAAA====",
+        "signature":"BBBB====",
+        "timestamp": 12341234
+    },    
+    {
+        "type":"initConn",
+        "userID":"userIDa",
+        "nonce":123123
+    },    
+    {
+        "type":"initKey",
+        "key":"base64encodedkey, size in config.py",
+        "signature":"BBBB===="
+    },
+    {
+        "type":"replayFinished"
+    },
+    {
+        "type":"error",
+        "error":"errorMsg"
+    }
+]

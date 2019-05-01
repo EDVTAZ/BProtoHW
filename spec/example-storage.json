@@ -1,0 +1,43 @@
+{
+    "certs": {
+        "userid1": {
+            "signing": {
+                "public": "AAAA===",
+                "private": "BBBB==="
+            },
+            "encryption": {
+                "public": "AAAA===",
+                "private": "BBBB==="
+            }
+        },
+        "userid2": {}
+    },
+    "channels": {
+        "channel1": {
+            "channelkey": "AAAA====",
+            "invites": {
+                "userid2": {
+                    "inviter": "userid1",
+                    "payload": "AAAA====",
+                    "timestamp": 12341234
+                },
+                "userid3": {}
+            },
+            "messages": [
+                {
+                    "timestamp": 12341234,
+                    "sender": "userid1",
+                    "text": "AAAA===",
+                    "payload": "AAAA==="
+                },
+                {
+                    "timestamp": 12341234,
+                    "sender": "userid2",
+                    "text": "AAAA===",
+                    "payload": "AAAA==="
+                }
+            ]
+        },
+        "channel2": {}
+    }
+}
