@@ -1,4 +1,6 @@
 import json
+from Crypto.Cipher import AES
+import base64 as b64
 
 
 class ClientDisconnected(Exception):
@@ -21,18 +23,33 @@ def recv_all(socket, n):
 
 def recv_message(socket, key=None):
     msg_len = int.from_bytes(recv_all(socket, 4), byteorder='big')
-    return json.loads(str(recv_all(socket, msg_len), 'utf-8'))
+    msg = recv_all(socket, msg_len)
 
+    if (key is not None):
+        msg = decrypt_sym(msg, key)
+    msg = json.loads(msg.decode('utf-8'))
 
-# def recv_message(socket, key=None):
-#     msg_len = int.from_bytes(recv_all(socket, 4), byteorder='big')
-#     msg = recv_all(socket, msg_len)
-#     # msg = print(msg) ## TODO decrypt IF key NONENONEONEONE
-#     return json.loads(str(msg), 'utf-8')
+    return msg
 
 
 def decrypt_sym(msg, key):
-    # TODO actually decrypt
+    msg = json.loads(msg.decode('utf-8'))
+    json_k = ['nonce', 'ciphertext', 'tag']
+    jv = {k: b64.b64decode(msg[k]) for k in json_k}
+    cipher = AES.new(key, AES.MODE_GCM, nonce=jv['nonce'])
+    msg = cipher.decrypt_and_verify(jv['ciphertext'], jv['tag'])
+    return msg
+
+
+def encrypt_sym(msg, key):
+    msg = bytes(json.dumps(msg), 'utf-8')
+
+    cipher = AES.new(key, AES.MODE_GCM)
+    ciphertext, tag = cipher.encrypt_and_digest(msg)
+    json_k = ['nonce', 'ciphertext', 'tag']
+    json_v = [b64.b64encode(x).decode('utf-8')
+              for x in [cipher.nonce, ciphertext, tag]]
+    msg = dict(zip(json_k, json_v))
     return msg
 
 
@@ -43,9 +60,7 @@ def pack_msg(msg):
 
 
 def send_msg(sock, msg, key=None):
+    if (key is not None):
+        msg = encrypt_sym(msg, key)
+
     sock.sendall(pack_msg(msg))
-
-
-# def send_msg(sock, msg, key=None):
-#    # TODO encrypt with key
-#    sock.sendall(pack_msg(msg))

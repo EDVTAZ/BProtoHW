@@ -12,3 +12,4 @@ v0.0.1      |_|                          by: @edvtaz, @???, @szilard95
 
 
 SECURE_CHANNEL_KEY_SIZE_BYTES = 16
+SERVER_SIGNING_KEY_PATH = 'private_sig.pem'
