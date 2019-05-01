@@ -14,6 +14,7 @@ In addition to the requirements defined in the homework handout, we specify the 
 * There can be multiple channels
 * A channel can be created by a single user
 * Any user in a channel can add new users to that channel
+	* Users cannot leave channels, if a user needs to be removed, a new channel can be created without that specific user
 
 ## General usage
 
@@ -39,20 +40,26 @@ In addition to the requirements defined in the homework handout, we specify the 
 * Replay or modify messages
 * Send messages in the name of someone else
 
+### We trust the server to
+* Store and forward messages in the order they arrived
+* Correctly dismiss messages, that have incorrect sequence numbers
+	* This is needed in order to ensure that every client receives the same message, if there is a sequence number collision
+	* The server can't verify the authenticity of the sequence number, that is done in every client 
+* Apply the current time to messages as a timestamp
+
 ## Capabilities
 
 * The attacker knows the public key of every user (as do every user)
-* The attacker can be a user invited to a number of channels (in this case we want to protect channels that she is not part of, and the source of the messages)
+* The attacker can be a user invited to a number of channels 
+	* in this case we want to protect channels that she is not part of
+	* in the channel that she is part of, we ensure the authenticity of the source of the messages and the order of the messages
 * The attacker has man-in-the-middle positions in every link and can view, modify and delay (for an indefinite period of time) messages
-* The attacker can view all data that is available to the server
+* The attacker can view all data that is available to the server except the secret keys of the server
+	* If the attacker can access the secret keys of the server, the ordering and timestamps of the messages may be modified, but the content of the messages will remain hidden and won't be replayable
 
 # Security requirements
 
-## Attacker that isn't part of any channel
-* Can't view, modify or send messages 
-* Can't invite users to channels that the attacker isn't part of
-
-## Attacker that is part of some channels
+## Attacker
 * Can't view, modify or send messages in channels she isn't part of
 * Can only send messages in her own name in the channels she is part of
 * Can't invite users to channels that the attacker isn't part of
@@ -130,10 +137,12 @@ A channel is identified by its channel ID. A channel holds the following informa
 # Cryptographic protocols
 
 ## Message types
+All message detailed below are sent between the clients and the server through a secure channel negotiated one-by-one. When the server sends a message to a client, it also appends a timestamp to the message, marking when that message was received from the other client. The server broadcasts messages, even to the original sender, thus serving as a confirmation, that the message was received and accepted. If the sender doesn't receive an echo of the message it sent, it can automatically retry.
+
 The following message types are used in our protocol.
 ### Add user to channel
 
-$payload = userID_A || channelID_C || E_{pk_B}(K_{channel})$
+$payload = userID_A || userID_B || channelID_C || E_{pk_B}(K_{channel})$
 
 $msg = payload || S_{sk_A}(payload)$
 
@@ -148,19 +157,32 @@ $msg = payload || S_{sk_A}(payload)$
 
 ### Communication message
 
-$assoc\_data= channelID_{C}$
+$assoc\_data = channelID_{C} || ChannelSeqNum_C || userID_A || UserSeqNum_A$
 
-$enc\_data= userID_A || SeqNum_C || message\_text$
+$enc\_data = message\_text$
 
 $msg = E_{K_{channel}}^{GCM}\bigl(assoc\_data, enc\_data || S_{sk_A}(assoc\_data || enc\_data)\bigr)$
 
 * This message is used for sending a text message to channel `C`, the sender's ID being `A`.
-* This message is encrypted with the channel key, in `GCM` mode (with a random IV), with `channelID` being the associated data so the server can determine the channel. The rest of the data is encrypted. Both the encrypted data and associated data are signed with the sender's signing key, so the sender cannot be impersonated. 
+* This message is encrypted with the channel key, in `GCM` mode (with a random IV), with `channelID`, `ChannelSeqNum` and `UserSeqNum` being the associated data so the server can determine the channel, and possible sequence number duplications. The rest of the data is encrypted. Both the encrypted data and associated data are signed with the sender's signing key, so the sender cannot be impersonated. 
 * The server broadcasts this message to all channel `C` participants.
 * Recipients check the following, and only accepts the message if all checks are successful:
 	* User `A` is part of the channel `C` 
-	* The $SeqNum_C$ is higher than all previous values in channel `C` 
+	* The $ChannelSeqNum_C$ is higher than all previous values in channel `C` 
+	* The $UserSeqNum_A$ is higher than all previous values associated with user `A` 
 	* All MACs and signatures are valid
+
+### Secure channel init message
+
+The above mentioned secure channel is built with the following message, sent by the client to the server. `initconn` is sent by the client, and `initkey` is sent by the server.
+
+$initconn = userID || rnd$  
+$initkey = E_{K_{user}}\bigl(symkey, S_{server}(rnd, symkey)\bigr)$
+
+* when a user wants to connect to the server, she sends a fresh random value and her `userID`
+* `symkey` is generated by the server, and will be used for the secure connection in GCM mode, and encrypt `initkey` message with the respective user's public key
+* the client will decrypt the message and verify the signature (with the server's key) on `symkey` and `rnd, and if correct, will switch to this key on the current connection
+* other 
 
 # Security Analysis
 

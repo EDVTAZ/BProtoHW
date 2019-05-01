@@ -1,130 +1,126 @@
 <!DOCTYPE html>
-<html>
-
-<head>
-    <meta http-equiv="Content-type" content="text/html;charset=UTF-8">
-    <title>Multi-party chat application specification</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.10.0/dist/katex.min.css"
-        integrity="sha384-9eLZqc9ds8eNjO3TmqPeYcDj8n+Qfa4nuSiGYa6DjLNcv9BtN69ZIulL9+8CqC9Y" crossorigin="anonymous">
-    <link rel="stylesheet"
-        href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
-    <link rel="stylesheet"
-        href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
-    <link href="https://cdn.jsdelivr.net/npm/katex-copytex@latest/dist/katex-copytex.min.css" rel="stylesheet"
-        type="text/css">
-    <style>
-        .task-list-item {
-            list-style-type: none;
-        }
-
-        .task-list-item-checkbox {
-            margin-left: -20px;
-            vertical-align: middle;
-        }
-    </style>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', 'Ubuntu', 'Droid Sans', sans-serif;
-            font-size: 14px;
-            line-height: 1.6;
-        }
-    </style>
-
-    <script src="https://cdn.jsdelivr.net/npm/katex-copytex@latest/dist/katex-copytex.min.js"></script>
-</head>
-
-<body>
-    <h1 id="multi-party-chat-application-specification">Multi-party chat application specification</h1>
-    <p><strong>Dömötör Szilárd</strong> <em>AE9EC3</em><br>
-        <strong>Juhász Márton</strong> <em>GASYQY</em><br>
-        <strong>Székely Gábor</strong> <em>EDVTAZ</em></p>
-    <h1 id="functional-requirements">Functional requirements</h1>
-    <p>In addition to the requirements defined in the homework handout, we specify the functional requirements in this
-        section.</p>
-    <h2 id="channels">Channels</h2>
-    <ul>
-        <li>The size of a channel is not limited</li>
-        <li>There can be multiple channels</li>
-        <li>A channel can be created by a single user</li>
-        <li>Any user in a channel can add new users to that channel</li>
-    </ul>
-    <h2 id="general-usage">General usage</h2>
-    <ul>
-        <li>Upon starting the application, user must supply username and password (to unlock her private keys)</li>
-        <li>If the supplied password is correct, the list of channels (that the user is part of) is displayed</li>
-        <li>User can go back to main menu from any sub-menu</li>
-        <li>User can create new channel or select existing one to enter
-            <ul>
-                <li>If new channel option is selected:
-                    <ul>
-                        <li>A prompt is displayed for the new channel name</li>
-                    </ul>
-                </li>
-                <li>If an existing channel is selected:
-                    <ul>
-                        <li>Message history is displayed</li>
-                        <li>New messages can be sent</li>
-                        <li>New users can be added</li>
-                    </ul>
-                </li>
-            </ul>
-        </li>
-    </ul>
-    <h1 id="attacker-model">Attacker model</h1>
-    <h2 id="goals-of-the-attacker-including-the-server">Goals of the attacker (including the server)</h2>
-    <ul>
-        <li>Recover private key of some other participant</li>
-        <li>Recover symmetric key of a channel she is not part of</li>
-        <li>Add a user in a channel that the attacker is not part of</li>
-        <li>Read or send messages in channels she is not part of</li>
-        <li>Replay or modify messages</li>
-        <li>Send messages in the name of someone else</li>
-    </ul>
-    <h2 id="capabilities">Capabilities</h2>
-    <ul>
-        <li>The attacker knows the public key of every user (as do every user)</li>
-        <li>The attacker can be a user invited to a number of channels (in this case we want to protect channels that
-            she is not part of, and the source of the messages)</li>
-        <li>The attacker has man-in-the-middle positions in every link and can view, modify and delay (for an indefinite
-            period of time) messages</li>
-        <li>The attacker can view all data that is available to the server</li>
-    </ul>
-    <h1 id="security-requirements">Security requirements</h1>
-    <h2 id="attacker-that-isnt-part-of-any-channel">Attacker that isn't part of any channel</h2>
-    <ul>
-        <li>Can't view, modify or send messages</li>
-        <li>Can't invite users to channels that the attacker isn't part of</li>
-    </ul>
-    <h2 id="attacker-that-is-part-of-some-channels">Attacker that is part of some channels</h2>
-    <ul>
-        <li>Can't view, modify or send messages in channels she isn't part of</li>
-        <li>Can only send messages in her own name in the channels she is part of</li>
-        <li>Can't invite users to channels that the attacker isn't part of</li>
-    </ul>
-    <h1 id="system-architecture">System architecture</h1>
-    <p>There are two types of entities in our system: server and user.
-        The users communicate with each other through the server.
-        Users can communicate with each other via channels: when a user sends a message to a channel, each user that is
-        part of that channel will receive that message through the server.</p>
-    <h2 id="server">Server</h2>
-    <p>Each time a client wants to send a message, it is sent to the server. The server's main message handler
-        determines the message type, and acts accordingly: after performing some basic checks, broadcasting the message
-        to all parties that need to receive it (i.e. the users that are part of the channel in question), and making a
-        persistent copy of it, so offline users can later receive it.</p>
-    <h2 id="user">User</h2>
-    <p>A user is identified by a unique user ID. Every user has a signing and an encryption key, and the public parts of
-        these keys are pre-shared with each user, so it is known to each participant what user IDs belong to what public
-        keys. Messages received by the user are stored locally. The private keys of the user are stored in persistent
-        storage, encrypted with a secret password.</p>
-    <h2 id="channel">Channel</h2>
-    <p>A channel is identified by its channel ID. A channel holds the following information:</p>
-    <ul>
-        <li>IDs of users that are part of the channel</li>
-        <li>For each user in the channel, the channel key (symmetric key), encrypted with her public encryption key</li>
-        <li>The messages that have been sent in the channel, encrypted with the channel key</li>
-    </ul>
-    <p><strong>Server architecture diagram</strong></p>
-    <pre><code><div>+--------+          +------------------------+
+    <html>
+    <head>
+        <meta http-equiv="Content-type" content="text/html;charset=UTF-8">
+        <title>Multi-party chat application specification</title>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.10.0/dist/katex.min.css" integrity="sha384-9eLZqc9ds8eNjO3TmqPeYcDj8n+Qfa4nuSiGYa6DjLNcv9BtN69ZIulL9+8CqC9Y" crossorigin="anonymous">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+        <link href="https://cdn.jsdelivr.net/npm/katex-copytex@latest/dist/katex-copytex.min.css" rel="stylesheet" type="text/css">
+        <style>
+.task-list-item { list-style-type: none; } .task-list-item-checkbox { margin-left: -20px; vertical-align: middle; }
+</style>
+        <style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+        </style>
+        
+        <script src="https://cdn.jsdelivr.net/npm/katex-copytex@latest/dist/katex-copytex.min.js"></script>
+    </head>
+    <body>
+        <h1 id="multi-party-chat-application-specification">Multi-party chat application specification</h1>
+<p><strong>Dömötör Szilárd</strong> <em>AE9EC3</em><br>
+<strong>Juhász Márton</strong> <em>GASYQY</em><br>
+<strong>Székely Gábor</strong> <em>EDVTAZ</em></p>
+<h1 id="functional-requirements">Functional requirements</h1>
+<p>In addition to the requirements defined in the homework handout, we specify the functional requirements in this section.</p>
+<h2 id="channels">Channels</h2>
+<ul>
+<li>The size of a channel is not limited</li>
+<li>There can be multiple channels</li>
+<li>A channel can be created by a single user</li>
+<li>Any user in a channel can add new users to that channel
+<ul>
+<li>Users cannot leave channels, if a user needs to be removed, a new channel can be created without that specific user</li>
+</ul>
+</li>
+</ul>
+<h2 id="general-usage">General usage</h2>
+<ul>
+<li>Upon starting the application, user must supply username and password (to unlock her private keys)</li>
+<li>If the supplied password is correct, the list of channels (that the user is part of) is displayed</li>
+<li>User can go back to main menu from any sub-menu</li>
+<li>User can create new channel or select existing one to enter
+<ul>
+<li>If new channel option is selected:
+<ul>
+<li>A prompt is displayed for the new channel name</li>
+</ul>
+</li>
+<li>If an existing channel is selected:
+<ul>
+<li>Message history is displayed</li>
+<li>New messages can be sent</li>
+<li>New users can be added</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h1 id="attacker-model">Attacker model</h1>
+<h2 id="goals-of-the-attacker-including-the-server">Goals of the attacker (including the server)</h2>
+<ul>
+<li>Recover private key of some other participant</li>
+<li>Recover symmetric key of a channel she is not part of</li>
+<li>Add a user in a channel that the attacker is not part of</li>
+<li>Read or send messages in channels she is not part of</li>
+<li>Replay or modify messages</li>
+<li>Send messages in the name of someone else</li>
+</ul>
+<h3 id="we-trust-the-server-to">We trust the server to</h3>
+<ul>
+<li>Store and forward messages in the order they arrived</li>
+<li>Correctly dismiss messages, that have incorrect sequence numbers
+<ul>
+<li>This is needed in order to ensure that every client receives the same message, if there is a sequence number collision</li>
+<li>The server can't verify the authenticity of the sequence number, that is done in every client</li>
+</ul>
+</li>
+<li>Apply the current time to messages as a timestamp</li>
+</ul>
+<h2 id="capabilities">Capabilities</h2>
+<ul>
+<li>The attacker knows the public key of every user (as do every user)</li>
+<li>The attacker can be a user invited to a number of channels
+<ul>
+<li>in this case we want to protect channels that she is not part of</li>
+<li>in the channel that she is part of, we ensure the authenticity of the source of the messages and the order of the messages</li>
+</ul>
+</li>
+<li>The attacker has man-in-the-middle positions in every link and can view, modify and delay (for an indefinite period of time) messages</li>
+<li>The attacker can view all data that is available to the server except the secret keys of the server
+<ul>
+<li>If the attacker can access the secret keys of the server, the ordering and timestamps of the messages may be modified, but the content of the messages will remain hidden and won't be replayable</li>
+</ul>
+</li>
+</ul>
+<h1 id="security-requirements">Security requirements</h1>
+<h2 id="attacker">Attacker</h2>
+<ul>
+<li>Can't view, modify or send messages in channels she isn't part of</li>
+<li>Can only send messages in her own name in the channels she is part of</li>
+<li>Can't invite users to channels that the attacker isn't part of</li>
+</ul>
+<h1 id="system-architecture">System architecture</h1>
+<p>There are two types of entities in our system: server and user.
+The users communicate with each other through the server.
+Users can communicate with each other via channels: when a user sends a message to a channel, each user that is part of that channel will receive that message through the server.</p>
+<h2 id="server">Server</h2>
+<p>Each time a client wants to send a message, it is sent to the server. The server's main message handler determines the message type, and acts accordingly: after performing some basic checks, broadcasting the message to all parties that need to receive it (i.e. the users that are part of the channel in question), and making a persistent copy of it, so offline users can later receive it.</p>
+<h2 id="user">User</h2>
+<p>A user is identified by a unique user ID. Every user has a signing and an encryption key, and the public parts of these keys are pre-shared with each user, so it is known to each participant what user IDs belong to what public keys. Messages received by the user are stored locally. The private keys of the user are stored in persistent storage, encrypted with a secret password.</p>
+<h2 id="channel">Channel</h2>
+<p>A channel is identified by its channel ID. A channel holds the following information:</p>
+<ul>
+<li>IDs of users that are part of the channel</li>
+<li>For each user in the channel, the channel key (symmetric key), encrypted with her public encryption key</li>
+<li>The messages that have been sent in the channel, encrypted with the channel key</li>
+</ul>
+<p><strong>Server architecture diagram</strong></p>
+<pre><code><div>+--------+          +------------------------+
 |        |          |                        |
 | socket +&lt;--------&gt;+ server message handler |
 |        |          |                        |
@@ -140,21 +136,8 @@
              +-------------+         |            |
                                      +------------+
 </div></code></pre>
-    <br>
-    <br>
-    <br>
-    <br>
-    <br>
-    <br>
-    <br>
-    <br>
-    <br>
-    <br>
-    <br>
-    <br>
-    <br>
-    <p><strong>Client architecture diagram</strong></p>
-    <pre><code><div>                    +----------------+
+<p><strong>Client architecture diagram</strong></p>
+<pre><code><div>                    +----------------+
 +--------+          |                |
 |        |          | client message |
 | socket +&lt;--------&gt;+    handler     |
@@ -181,648 +164,66 @@
              +----------+       |            |
                                 +------------+
 </div></code></pre>
-    <h1 id="cryptographic-protocols">Cryptographic protocols</h1>
-    <h2 id="message-types">Message types</h2>
-    <p>The following message types are used in our protocol.</p>
-    <h3 id="add-user-to-channel">Add user to channel</h3>
-    <p><span class="katex"><span class="katex-mathml"><math>
-                    <semantics>
-                        <mrow>
-                            <mi>p</mi>
-                            <mi>a</mi>
-                            <mi>y</mi>
-                            <mi>l</mi>
-                            <mi>o</mi>
-                            <mi>a</mi>
-                            <mi>d</mi>
-                            <mo>=</mo>
-                            <mi>u</mi>
-                            <mi>s</mi>
-                            <mi>e</mi>
-                            <mi>r</mi>
-                            <mi>I</mi>
-                            <msub>
-                                <mi>D</mi>
-                                <mi>A</mi>
-                            </msub>
-                            <mi mathvariant="normal">∣</mi>
-                            <mi mathvariant="normal">∣</mi>
-                            <mi>c</mi>
-                            <mi>h</mi>
-                            <mi>a</mi>
-                            <mi>n</mi>
-                            <mi>n</mi>
-                            <mi>e</mi>
-                            <mi>l</mi>
-                            <mi>I</mi>
-                            <msub>
-                                <mi>D</mi>
-                                <mi>C</mi>
-                            </msub>
-                            <mi mathvariant="normal">∣</mi>
-                            <mi mathvariant="normal">∣</mi>
-                            <msub>
-                                <mi>E</mi>
-                                <mrow>
-                                    <mi>p</mi>
-                                    <msub>
-                                        <mi>k</mi>
-                                        <mi>B</mi>
-                                    </msub>
-                                </mrow>
-                            </msub>
-                            <mo>(</mo>
-                            <msub>
-                                <mi>K</mi>
-                                <mrow>
-                                    <mi>c</mi>
-                                    <mi>h</mi>
-                                    <mi>a</mi>
-                                    <mi>n</mi>
-                                    <mi>n</mi>
-                                    <mi>e</mi>
-                                    <mi>l</mi>
-                                </mrow>
-                            </msub>
-                            <mo>)</mo>
-                        </mrow>
-                        <annotation encoding="application/x-tex">payload = userID_A || channelID_C ||
-                            E_{pk_B}(K_{channel})</annotation>
-                    </semantics>
-                </math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut"
-                        style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span
-                        class="mord mathdefault">p</span><span class="mord mathdefault">a</span><span
-                        class="mord mathdefault" style="margin-right:0.03588em;">y</span><span class="mord mathdefault"
-                        style="margin-right:0.01968em;">l</span><span class="mord mathdefault">o</span><span
-                        class="mord mathdefault">a</span><span class="mord mathdefault">d</span><span class="mspace"
-                        style="margin-right:0.2777777777777778em;"></span><span class="mrel">=</span><span
-                        class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span
-                        class="strut" style="height:1.036108em;vertical-align:-0.286108em;"></span><span
-                        class="mord mathdefault">u</span><span class="mord mathdefault">s</span><span
-                        class="mord mathdefault">e</span><span class="mord mathdefault"
-                        style="margin-right:0.02778em;">r</span><span class="mord mathdefault"
-                        style="margin-right:0.07847em;">I</span><span class="mord"><span class="mord mathdefault"
-                            style="margin-right:0.02778em;">D</span><span class="msupsub"><span
-                                class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist"
-                                        style="height:0.32833099999999993em;"><span
-                                            style="top:-2.5500000000000003em;margin-left:-0.02778em;margin-right:0.05em;"><span
-                                                class="pstrut" style="height:2.7em;"></span><span
-                                                class="sizing reset-size6 size3 mtight"><span
-                                                    class="mord mathdefault mtight">A</span></span></span></span><span
-                                        class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist"
-                                        style="height:0.15em;"><span></span></span></span></span></span></span><span
-                        class="mord">∣</span><span class="mord">∣</span><span class="mord mathdefault">c</span><span
-                        class="mord mathdefault">h</span><span class="mord mathdefault">a</span><span
-                        class="mord mathdefault">n</span><span class="mord mathdefault">n</span><span
-                        class="mord mathdefault">e</span><span class="mord mathdefault"
-                        style="margin-right:0.01968em;">l</span><span class="mord mathdefault"
-                        style="margin-right:0.07847em;">I</span><span class="mord"><span class="mord mathdefault"
-                            style="margin-right:0.02778em;">D</span><span class="msupsub"><span
-                                class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist"
-                                        style="height:0.32833099999999993em;"><span
-                                            style="top:-2.5500000000000003em;margin-left:-0.02778em;margin-right:0.05em;"><span
-                                                class="pstrut" style="height:2.7em;"></span><span
-                                                class="sizing reset-size6 size3 mtight"><span
-                                                    class="mord mathdefault mtight"
-                                                    style="margin-right:0.07153em;">C</span></span></span></span><span
-                                        class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist"
-                                        style="height:0.15em;"><span></span></span></span></span></span></span><span
-                        class="mord">∣</span><span class="mord">∣</span><span class="mord"><span
-                            class="mord mathdefault" style="margin-right:0.05764em;">E</span><span class="msupsub"><span
-                                class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist"
-                                        style="height:0.3361079999999999em;"><span
-                                            style="top:-2.5500000000000003em;margin-left:-0.05764em;margin-right:0.05em;"><span
-                                                class="pstrut" style="height:2.7em;"></span><span
-                                                class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span
-                                                        class="mord mathdefault mtight">p</span><span
-                                                        class="mord mtight"><span class="mord mathdefault mtight"
-                                                            style="margin-right:0.03148em;">k</span><span
-                                                            class="msupsub"><span class="vlist-t vlist-t2"><span
-                                                                    class="vlist-r"><span class="vlist"
-                                                                        style="height:0.3448em;"><span
-                                                                            style="top:-2.3567071428571427em;margin-left:-0.03148em;margin-right:0.07142857142857144em;"><span
-                                                                                class="pstrut"
-                                                                                style="height:2.5em;"></span><span
-                                                                                class="sizing reset-size3 size1 mtight"><span
-                                                                                    class="mord mathdefault mtight"
-                                                                                    style="margin-right:0.05017em;">B</span></span></span></span><span
-                                                                        class="vlist-s">​</span></span><span
-                                                                    class="vlist-r"><span class="vlist"
-                                                                        style="height:0.14329285714285717em;"><span></span></span></span></span></span></span></span></span></span></span><span
-                                        class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist"
-                                        style="height:0.286108em;"><span></span></span></span></span></span></span><span
-                        class="mopen">(</span><span class="mord"><span class="mord mathdefault"
-                            style="margin-right:0.07153em;">K</span><span class="msupsub"><span
-                                class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist"
-                                        style="height:0.33610799999999996em;"><span
-                                            style="top:-2.5500000000000003em;margin-left:-0.07153em;margin-right:0.05em;"><span
-                                                class="pstrut" style="height:2.7em;"></span><span
-                                                class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span
-                                                        class="mord mathdefault mtight">c</span><span
-                                                        class="mord mathdefault mtight">h</span><span
-                                                        class="mord mathdefault mtight">a</span><span
-                                                        class="mord mathdefault mtight">n</span><span
-                                                        class="mord mathdefault mtight">n</span><span
-                                                        class="mord mathdefault mtight">e</span><span
-                                                        class="mord mathdefault mtight"
-                                                        style="margin-right:0.01968em;">l</span></span></span></span></span><span
-                                        class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist"
-                                        style="height:0.15em;"><span></span></span></span></span></span></span><span
-                        class="mclose">)</span></span></span></span></p>
-    <p><span class="katex"><span class="katex-mathml"><math>
-                    <semantics>
-                        <mrow>
-                            <mi>m</mi>
-                            <mi>s</mi>
-                            <mi>g</mi>
-                            <mo>=</mo>
-                            <mi>p</mi>
-                            <mi>a</mi>
-                            <mi>y</mi>
-                            <mi>l</mi>
-                            <mi>o</mi>
-                            <mi>a</mi>
-                            <mi>d</mi>
-                            <mi mathvariant="normal">∣</mi>
-                            <mi mathvariant="normal">∣</mi>
-                            <msub>
-                                <mi>S</mi>
-                                <mrow>
-                                    <mi>s</mi>
-                                    <msub>
-                                        <mi>k</mi>
-                                        <mi>A</mi>
-                                    </msub>
-                                </mrow>
-                            </msub>
-                            <mo>(</mo>
-                            <mi>p</mi>
-                            <mi>a</mi>
-                            <mi>y</mi>
-                            <mi>l</mi>
-                            <mi>o</mi>
-                            <mi>a</mi>
-                            <mi>d</mi>
-                            <mo>)</mo>
-                        </mrow>
-                        <annotation encoding="application/x-tex">msg = payload || S_{sk_A}(payload)</annotation>
-                    </semantics>
-                </math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut"
-                        style="height:0.625em;vertical-align:-0.19444em;"></span><span
-                        class="mord mathdefault">m</span><span class="mord mathdefault">s</span><span
-                        class="mord mathdefault" style="margin-right:0.03588em;">g</span><span class="mspace"
-                        style="margin-right:0.2777777777777778em;"></span><span class="mrel">=</span><span
-                        class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span
-                        class="strut" style="height:1.000305em;vertical-align:-0.250305em;"></span><span
-                        class="mord mathdefault">p</span><span class="mord mathdefault">a</span><span
-                        class="mord mathdefault" style="margin-right:0.03588em;">y</span><span class="mord mathdefault"
-                        style="margin-right:0.01968em;">l</span><span class="mord mathdefault">o</span><span
-                        class="mord mathdefault">a</span><span class="mord mathdefault">d</span><span
-                        class="mord">∣</span><span class="mord">∣</span><span class="mord"><span
-                            class="mord mathdefault" style="margin-right:0.05764em;">S</span><span class="msupsub"><span
-                                class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist"
-                                        style="height:0.33610799999999996em;"><span
-                                            style="top:-2.5500000000000003em;margin-left:-0.05764em;margin-right:0.05em;"><span
-                                                class="pstrut" style="height:2.7em;"></span><span
-                                                class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span
-                                                        class="mord mathdefault mtight">s</span><span
-                                                        class="mord mtight"><span class="mord mathdefault mtight"
-                                                            style="margin-right:0.03148em;">k</span><span
-                                                            class="msupsub"><span class="vlist-t vlist-t2"><span
-                                                                    class="vlist-r"><span class="vlist"
-                                                                        style="height:0.3448em;"><span
-                                                                            style="top:-2.3567071428571427em;margin-left:-0.03148em;margin-right:0.07142857142857144em;"><span
-                                                                                class="pstrut"
-                                                                                style="height:2.5em;"></span><span
-                                                                                class="sizing reset-size3 size1 mtight"><span
-                                                                                    class="mord mathdefault mtight">A</span></span></span></span><span
-                                                                        class="vlist-s">​</span></span><span
-                                                                    class="vlist-r"><span class="vlist"
-                                                                        style="height:0.14329285714285717em;"><span></span></span></span></span></span></span></span></span></span></span><span
-                                        class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist"
-                                        style="height:0.250305em;"><span></span></span></span></span></span></span><span
-                        class="mopen">(</span><span class="mord mathdefault">p</span><span
-                        class="mord mathdefault">a</span><span class="mord mathdefault"
-                        style="margin-right:0.03588em;">y</span><span class="mord mathdefault"
-                        style="margin-right:0.01968em;">l</span><span class="mord mathdefault">o</span><span
-                        class="mord mathdefault">a</span><span class="mord mathdefault">d</span><span
-                        class="mclose">)</span></span></span></span></p>
-    <ul>
-        <li>This message is used for creating a new channel or adding a new member to it.</li>
-        <li>The above message is user <code>A</code> adding user <code>B</code> to channel <code>C</code>.</li>
-        <li>The channel key is encrypted with the public key of user <code>B</code>, this way sharing it with her and
-            only her.</li>
-        <li>The whole message is signed by user <code>A</code>, proving that the message is originating from a user that
-            is part of channel <code>C</code>.</li>
-        <li>If <code>A == B</code>, and <code>C</code> doesn't exist yet, this is the creation of a new channel
-            <ul>
-                <li>In this case, if <code>C</code> already exists, this message is ignored</li>
-            </ul>
-        </li>
-        <li>This message is also ignored if <code>A</code> is not part of channel <code>C</code>, or if the signature is
-            invalid.</li>
-        <li>This message is broadcasted (by the server) to all users in channel <code>C</code>, including the new user
-            <code>B</code>.</li>
-    </ul>
-    <h3 id="communication-message">Communication message</h3>
-    <p><span class="katex"><span class="katex-mathml"><math>
-                    <semantics>
-                        <mrow>
-                            <mi>a</mi>
-                            <mi>s</mi>
-                            <mi>s</mi>
-                            <mi>o</mi>
-                            <mi>c</mi>
-                            <mi mathvariant="normal">_</mi>
-                            <mi>d</mi>
-                            <mi>a</mi>
-                            <mi>t</mi>
-                            <mi>a</mi>
-                            <mo>=</mo>
-                            <mi>c</mi>
-                            <mi>h</mi>
-                            <mi>a</mi>
-                            <mi>n</mi>
-                            <mi>n</mi>
-                            <mi>e</mi>
-                            <mi>l</mi>
-                            <mi>I</mi>
-                            <msub>
-                                <mi>D</mi>
-                                <mi>C</mi>
-                            </msub>
-                        </mrow>
-                        <annotation encoding="application/x-tex">assoc\_data= channelID_{C}</annotation>
-                    </semantics>
-                </math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut"
-                        style="height:1.00444em;vertical-align:-0.31em;"></span><span
-                        class="mord mathdefault">a</span><span class="mord mathdefault">s</span><span
-                        class="mord mathdefault">s</span><span class="mord mathdefault">o</span><span
-                        class="mord mathdefault">c</span><span class="mord"
-                        style="margin-right:0.02778em;">_</span><span class="mord mathdefault">d</span><span
-                        class="mord mathdefault">a</span><span class="mord mathdefault">t</span><span
-                        class="mord mathdefault">a</span><span class="mspace"
-                        style="margin-right:0.2777777777777778em;"></span><span class="mrel">=</span><span
-                        class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span
-                        class="strut" style="height:0.84444em;vertical-align:-0.15em;"></span><span
-                        class="mord mathdefault">c</span><span class="mord mathdefault">h</span><span
-                        class="mord mathdefault">a</span><span class="mord mathdefault">n</span><span
-                        class="mord mathdefault">n</span><span class="mord mathdefault">e</span><span
-                        class="mord mathdefault" style="margin-right:0.01968em;">l</span><span class="mord mathdefault"
-                        style="margin-right:0.07847em;">I</span><span class="mord"><span class="mord mathdefault"
-                            style="margin-right:0.02778em;">D</span><span class="msupsub"><span
-                                class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist"
-                                        style="height:0.32833099999999993em;"><span
-                                            style="top:-2.5500000000000003em;margin-left:-0.02778em;margin-right:0.05em;"><span
-                                                class="pstrut" style="height:2.7em;"></span><span
-                                                class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span
-                                                        class="mord mathdefault mtight"
-                                                        style="margin-right:0.07153em;">C</span></span></span></span></span><span
-                                        class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist"
-                                        style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span>
-    </p>
-    <p><span class="katex"><span class="katex-mathml"><math>
-                    <semantics>
-                        <mrow>
-                            <mi>e</mi>
-                            <mi>n</mi>
-                            <mi>c</mi>
-                            <mi mathvariant="normal">_</mi>
-                            <mi>d</mi>
-                            <mi>a</mi>
-                            <mi>t</mi>
-                            <mi>a</mi>
-                            <mo>=</mo>
-                            <mi>u</mi>
-                            <mi>s</mi>
-                            <mi>e</mi>
-                            <mi>r</mi>
-                            <mi>I</mi>
-                            <msub>
-                                <mi>D</mi>
-                                <mi>A</mi>
-                            </msub>
-                            <mi mathvariant="normal">∣</mi>
-                            <mi mathvariant="normal">∣</mi>
-                            <mi>S</mi>
-                            <mi>e</mi>
-                            <mi>q</mi>
-                            <mi>N</mi>
-                            <mi>u</mi>
-                            <msub>
-                                <mi>m</mi>
-                                <mi>C</mi>
-                            </msub>
-                            <mi mathvariant="normal">∣</mi>
-                            <mi mathvariant="normal">∣</mi>
-                            <mi>m</mi>
-                            <mi>e</mi>
-                            <mi>s</mi>
-                            <mi>s</mi>
-                            <mi>a</mi>
-                            <mi>g</mi>
-                            <mi>e</mi>
-                            <mi mathvariant="normal">_</mi>
-                            <mi>t</mi>
-                            <mi>e</mi>
-                            <mi>x</mi>
-                            <mi>t</mi>
-                        </mrow>
-                        <annotation encoding="application/x-tex">enc\_data= userID_A || SeqNum_C || message\_text
-                        </annotation>
-                    </semantics>
-                </math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut"
-                        style="height:1.00444em;vertical-align:-0.31em;"></span><span
-                        class="mord mathdefault">e</span><span class="mord mathdefault">n</span><span
-                        class="mord mathdefault">c</span><span class="mord"
-                        style="margin-right:0.02778em;">_</span><span class="mord mathdefault">d</span><span
-                        class="mord mathdefault">a</span><span class="mord mathdefault">t</span><span
-                        class="mord mathdefault">a</span><span class="mspace"
-                        style="margin-right:0.2777777777777778em;"></span><span class="mrel">=</span><span
-                        class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span
-                        class="strut" style="height:1.06em;vertical-align:-0.31em;"></span><span
-                        class="mord mathdefault">u</span><span class="mord mathdefault">s</span><span
-                        class="mord mathdefault">e</span><span class="mord mathdefault"
-                        style="margin-right:0.02778em;">r</span><span class="mord mathdefault"
-                        style="margin-right:0.07847em;">I</span><span class="mord"><span class="mord mathdefault"
-                            style="margin-right:0.02778em;">D</span><span class="msupsub"><span
-                                class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist"
-                                        style="height:0.32833099999999993em;"><span
-                                            style="top:-2.5500000000000003em;margin-left:-0.02778em;margin-right:0.05em;"><span
-                                                class="pstrut" style="height:2.7em;"></span><span
-                                                class="sizing reset-size6 size3 mtight"><span
-                                                    class="mord mathdefault mtight">A</span></span></span></span><span
-                                        class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist"
-                                        style="height:0.15em;"><span></span></span></span></span></span></span><span
-                        class="mord">∣</span><span class="mord">∣</span><span class="mord mathdefault"
-                        style="margin-right:0.05764em;">S</span><span class="mord mathdefault">e</span><span
-                        class="mord mathdefault" style="margin-right:0.03588em;">q</span><span class="mord mathdefault"
-                        style="margin-right:0.10903em;">N</span><span class="mord mathdefault">u</span><span
-                        class="mord"><span class="mord mathdefault">m</span><span class="msupsub"><span
-                                class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist"
-                                        style="height:0.32833099999999993em;"><span
-                                            style="top:-2.5500000000000003em;margin-left:0em;margin-right:0.05em;"><span
-                                                class="pstrut" style="height:2.7em;"></span><span
-                                                class="sizing reset-size6 size3 mtight"><span
-                                                    class="mord mathdefault mtight"
-                                                    style="margin-right:0.07153em;">C</span></span></span></span><span
-                                        class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist"
-                                        style="height:0.15em;"><span></span></span></span></span></span></span><span
-                        class="mord">∣</span><span class="mord">∣</span><span class="mord mathdefault">m</span><span
-                        class="mord mathdefault">e</span><span class="mord mathdefault">s</span><span
-                        class="mord mathdefault">s</span><span class="mord mathdefault">a</span><span
-                        class="mord mathdefault" style="margin-right:0.03588em;">g</span><span
-                        class="mord mathdefault">e</span><span class="mord"
-                        style="margin-right:0.02778em;">_</span><span class="mord mathdefault">t</span><span
-                        class="mord mathdefault">e</span><span class="mord mathdefault">x</span><span
-                        class="mord mathdefault">t</span></span></span></span></p>
-    <p><span class="katex"><span class="katex-mathml"><math>
-                    <semantics>
-                        <mrow>
-                            <mi>m</mi>
-                            <mi>s</mi>
-                            <mi>g</mi>
-                            <mo>=</mo>
-                            <msubsup>
-                                <mi>E</mi>
-                                <msub>
-                                    <mi>K</mi>
-                                    <mrow>
-                                        <mi>c</mi>
-                                        <mi>h</mi>
-                                        <mi>a</mi>
-                                        <mi>n</mi>
-                                        <mi>n</mi>
-                                        <mi>e</mi>
-                                        <mi>l</mi>
-                                    </mrow>
-                                </msub>
-                                <mrow>
-                                    <mi>G</mi>
-                                    <mi>C</mi>
-                                    <mi>M</mi>
-                                </mrow>
-                            </msubsup>
-                            <mo fence="true">(</mo>
-                            <mi>a</mi>
-                            <mi>s</mi>
-                            <mi>s</mi>
-                            <mi>o</mi>
-                            <mi>c</mi>
-                            <mi mathvariant="normal">_</mi>
-                            <mi>d</mi>
-                            <mi>a</mi>
-                            <mi>t</mi>
-                            <mi>a</mi>
-                            <mo separator="true">,</mo>
-                            <mi>e</mi>
-                            <mi>n</mi>
-                            <mi>c</mi>
-                            <mi mathvariant="normal">_</mi>
-                            <mi>d</mi>
-                            <mi>a</mi>
-                            <mi>t</mi>
-                            <mi>a</mi>
-                            <mi mathvariant="normal">∣</mi>
-                            <mi mathvariant="normal">∣</mi>
-                            <msub>
-                                <mi>S</mi>
-                                <mrow>
-                                    <mi>s</mi>
-                                    <msub>
-                                        <mi>k</mi>
-                                        <mi>A</mi>
-                                    </msub>
-                                </mrow>
-                            </msub>
-                            <mo>(</mo>
-                            <mi>a</mi>
-                            <mi>s</mi>
-                            <mi>s</mi>
-                            <mi>o</mi>
-                            <mi>c</mi>
-                            <mi mathvariant="normal">_</mi>
-                            <mi>d</mi>
-                            <mi>a</mi>
-                            <mi>t</mi>
-                            <mi>a</mi>
-                            <mi mathvariant="normal">∣</mi>
-                            <mi mathvariant="normal">∣</mi>
-                            <mi>e</mi>
-                            <mi>n</mi>
-                            <mi>c</mi>
-                            <mi mathvariant="normal">_</mi>
-                            <mi>d</mi>
-                            <mi>a</mi>
-                            <mi>t</mi>
-                            <mi>a</mi>
-                            <mo>)</mo>
-                            <mo fence="true">)</mo>
-                        </mrow>
-                        <annotation encoding="application/x-tex">msg = E_{K_{channel}}^{GCM}\bigl(assoc\_data, enc\_data
-                            || S_{sk_A}(assoc\_data || enc\_data)\bigr)</annotation>
-                    </semantics>
-                </math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut"
-                        style="height:0.625em;vertical-align:-0.19444em;"></span><span
-                        class="mord mathdefault">m</span><span class="mord mathdefault">s</span><span
-                        class="mord mathdefault" style="margin-right:0.03588em;">g</span><span class="mspace"
-                        style="margin-right:0.2777777777777778em;"></span><span class="mrel">=</span><span
-                        class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span
-                        class="strut" style="height:1.231191em;vertical-align:-0.38119099999999995em;"></span><span
-                        class="mord"><span class="mord mathdefault" style="margin-right:0.05764em;">E</span><span
-                            class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist"
-                                        style="height:0.8413309999999999em;"><span
-                                            style="top:-2.424669em;margin-left:-0.05764em;margin-right:0.05em;"><span
-                                                class="pstrut" style="height:2.7em;"></span><span
-                                                class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span
-                                                        class="mord mtight"><span class="mord mathdefault mtight"
-                                                            style="margin-right:0.07153em;">K</span><span
-                                                            class="msupsub"><span class="vlist-t vlist-t2"><span
-                                                                    class="vlist-r"><span class="vlist"
-                                                                        style="height:0.3448em;"><span
-                                                                            style="top:-2.3487714285714287em;margin-left:-0.07153em;margin-right:0.07142857142857144em;"><span
-                                                                                class="pstrut"
-                                                                                style="height:2.5em;"></span><span
-                                                                                class="sizing reset-size3 size1 mtight"><span
-                                                                                    class="mord mtight"><span
-                                                                                        class="mord mathdefault mtight">c</span><span
-                                                                                        class="mord mathdefault mtight">h</span><span
-                                                                                        class="mord mathdefault mtight">a</span><span
-                                                                                        class="mord mathdefault mtight">n</span><span
-                                                                                        class="mord mathdefault mtight">n</span><span
-                                                                                        class="mord mathdefault mtight">e</span><span
-                                                                                        class="mord mathdefault mtight"
-                                                                                        style="margin-right:0.01968em;">l</span></span></span></span></span><span
-                                                                        class="vlist-s">​</span></span><span
-                                                                    class="vlist-r"><span class="vlist"
-                                                                        style="height:0.15122857142857138em;"><span></span></span></span></span></span></span></span></span></span><span
-                                            style="top:-3.063em;margin-right:0.05em;"><span class="pstrut"
-                                                style="height:2.7em;"></span><span
-                                                class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span
-                                                        class="mord mathdefault mtight">G</span><span
-                                                        class="mord mathdefault mtight"
-                                                        style="margin-right:0.07153em;">C</span><span
-                                                        class="mord mathdefault mtight"
-                                                        style="margin-right:0.10903em;">M</span></span></span></span></span><span
-                                        class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist"
-                                        style="height:0.38119099999999995em;"><span></span></span></span></span></span></span><span
-                        class="mopen"><span class="delimsizing size1">(</span></span><span
-                        class="mord mathdefault">a</span><span class="mord mathdefault">s</span><span
-                        class="mord mathdefault">s</span><span class="mord mathdefault">o</span><span
-                        class="mord mathdefault">c</span><span class="mord"
-                        style="margin-right:0.02778em;">_</span><span class="mord mathdefault">d</span><span
-                        class="mord mathdefault">a</span><span class="mord mathdefault">t</span><span
-                        class="mord mathdefault">a</span><span class="mpunct">,</span><span class="mspace"
-                        style="margin-right:0.16666666666666666em;"></span><span class="mord mathdefault">e</span><span
-                        class="mord mathdefault">n</span><span class="mord mathdefault">c</span><span class="mord"
-                        style="margin-right:0.02778em;">_</span><span class="mord mathdefault">d</span><span
-                        class="mord mathdefault">a</span><span class="mord mathdefault">t</span><span
-                        class="mord mathdefault">a</span><span class="mord">∣</span><span class="mord">∣</span><span
-                        class="mord"><span class="mord mathdefault" style="margin-right:0.05764em;">S</span><span
-                            class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist"
-                                        style="height:0.33610799999999996em;"><span
-                                            style="top:-2.5500000000000003em;margin-left:-0.05764em;margin-right:0.05em;"><span
-                                                class="pstrut" style="height:2.7em;"></span><span
-                                                class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span
-                                                        class="mord mathdefault mtight">s</span><span
-                                                        class="mord mtight"><span class="mord mathdefault mtight"
-                                                            style="margin-right:0.03148em;">k</span><span
-                                                            class="msupsub"><span class="vlist-t vlist-t2"><span
-                                                                    class="vlist-r"><span class="vlist"
-                                                                        style="height:0.3448em;"><span
-                                                                            style="top:-2.3567071428571427em;margin-left:-0.03148em;margin-right:0.07142857142857144em;"><span
-                                                                                class="pstrut"
-                                                                                style="height:2.5em;"></span><span
-                                                                                class="sizing reset-size3 size1 mtight"><span
-                                                                                    class="mord mathdefault mtight">A</span></span></span></span><span
-                                                                        class="vlist-s">​</span></span><span
-                                                                    class="vlist-r"><span class="vlist"
-                                                                        style="height:0.14329285714285717em;"><span></span></span></span></span></span></span></span></span></span></span><span
-                                        class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist"
-                                        style="height:0.250305em;"><span></span></span></span></span></span></span><span
-                        class="mopen">(</span><span class="mord mathdefault">a</span><span
-                        class="mord mathdefault">s</span><span class="mord mathdefault">s</span><span
-                        class="mord mathdefault">o</span><span class="mord mathdefault">c</span><span class="mord"
-                        style="margin-right:0.02778em;">_</span><span class="mord mathdefault">d</span><span
-                        class="mord mathdefault">a</span><span class="mord mathdefault">t</span><span
-                        class="mord mathdefault">a</span><span class="mord">∣</span><span class="mord">∣</span><span
-                        class="mord mathdefault">e</span><span class="mord mathdefault">n</span><span
-                        class="mord mathdefault">c</span><span class="mord"
-                        style="margin-right:0.02778em;">_</span><span class="mord mathdefault">d</span><span
-                        class="mord mathdefault">a</span><span class="mord mathdefault">t</span><span
-                        class="mord mathdefault">a</span><span class="mclose">)</span><span class="mclose"><span
-                            class="delimsizing size1">)</span></span></span></span></span></p>
-    <ul>
-        <li>This message is used for sending a text message to channel <code>C</code>, the sender's ID being
-            <code>A</code>.</li>
-        <li>This message is encrypted with the channel key, in <code>GCM</code> mode (with a random IV), with
-            <code>channelID</code> being the associated data so the server can determine the channel. The rest of the
-            data is encrypted. Both the encrypted data and associated data are signed with the sender's signing key, so
-            the sender cannot be impersonated.</li>
-        <li>The server broadcasts this message to all channel <code>C</code> participants.</li>
-        <li>Recipients check the following, and only accepts the message if all checks are successful:
-            <ul>
-                <li>User <code>A</code> is part of the channel <code>C</code></li>
-                <li>The <span class="katex"><span class="katex-mathml"><math>
-                                <semantics>
-                                    <mrow>
-                                        <mi>S</mi>
-                                        <mi>e</mi>
-                                        <mi>q</mi>
-                                        <mi>N</mi>
-                                        <mi>u</mi>
-                                        <msub>
-                                            <mi>m</mi>
-                                            <mi>C</mi>
-                                        </msub>
-                                    </mrow>
-                                    <annotation encoding="application/x-tex">SeqNum_C</annotation>
-                                </semantics>
-                            </math></span><span class="katex-html" aria-hidden="true"><span class="base"><span
-                                    class="strut"
-                                    style="height:0.8777699999999999em;vertical-align:-0.19444em;"></span><span
-                                    class="mord mathdefault" style="margin-right:0.05764em;">S</span><span
-                                    class="mord mathdefault">e</span><span class="mord mathdefault"
-                                    style="margin-right:0.03588em;">q</span><span class="mord mathdefault"
-                                    style="margin-right:0.10903em;">N</span><span class="mord mathdefault">u</span><span
-                                    class="mord"><span class="mord mathdefault">m</span><span class="msupsub"><span
-                                            class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist"
-                                                    style="height:0.32833099999999993em;"><span
-                                                        style="top:-2.5500000000000003em;margin-left:0em;margin-right:0.05em;"><span
-                                                            class="pstrut" style="height:2.7em;"></span><span
-                                                            class="sizing reset-size6 size3 mtight"><span
-                                                                class="mord mathdefault mtight"
-                                                                style="margin-right:0.07153em;">C</span></span></span></span><span
-                                                    class="vlist-s">​</span></span><span class="vlist-r"><span
-                                                    class="vlist"
-                                                    style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span>
-                    is higher than all previous values in channel <code>C</code></li>
-                <li>All MACs and signatures are valid</li>
-            </ul>
-        </li>
-    </ul>
-    <h1 id="security-analysis">Security Analysis</h1>
-    <p>We consider the following scenarios according to the previously described attacker model and capabilities.</p>
-    <h2 id="recover-private-key-of-user">Recover private key of user</h2>
-    <p>The private key of users are stored encrypted, and they can accessed if they are correctly decrypted using the
-        secret password of the given user. These private keys are never sent through the network.</p>
-    <h2 id="recover-symmetric-key-of-a-channel">Recover symmetric key of a channel</h2>
-    <p>The channel key is generated by the user creating a given channel. Each new channel participant receives the key,
-        encrypted by their public key. Thus, the attacker can only recover the channel key if she breaks the public key
-        encryption or steals the private key of some channel participant.</p>
-    <h2 id="add-user-to-arbitrary-channel">Add user to arbitrary channel</h2>
-    <p>The message that is used to add participants to a channel is signed with the private signing key of a user who is
-        already part of the given channel, otherwise the message will be rejected. If the signature is invalid, the
-        message will also be rejected.</p>
-    <h2 id="read-or-send-messages-in-arbitrary-channel">Read or send messages in arbitrary channel</h2>
-    <p>In order to read or send messages in a channel, the channel key is necessary to encrypt or decrypt the message.
-        Additionally, even if the attacker can steal the channel key somehow, she will only be able to read messages,
-        because messages need to be signed with the sender's private signing key.</p>
-    <h2 id="message-forgery-modification-and-replay">Message forgery, modification and replay</h2>
-    <p>Message modification is prevented by GCM mode and the sender's signature on the message, so even if the attacker
-        knows the channel key she can not modify the message or impersonate anyone.</p>
-    <p>Message replay is prevented by the use of a channel-wide sequence number.</p>
+<h1 id="cryptographic-protocols">Cryptographic protocols</h1>
+<h2 id="message-types">Message types</h2>
+<p>All message detailed below are sent between the clients and the server through a secure channel negotiated one-by-one. When the server sends a message to a client, it also appends a timestamp to the message, marking when that message was received from the other client. The server broadcasts messages, even to the original sender, thus serving as a confirmation, that the message was received and accepted. If the sender doesn't receive an echo of the message it sent, it can automatically retry.</p>
+<p>The following message types are used in our protocol.</p>
+<h3 id="add-user-to-channel">Add user to channel</h3>
+<p><span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>p</mi><mi>a</mi><mi>y</mi><mi>l</mi><mi>o</mi><mi>a</mi><mi>d</mi><mo>=</mo><mi>u</mi><mi>s</mi><mi>e</mi><mi>r</mi><mi>I</mi><msub><mi>D</mi><mi>A</mi></msub><mi mathvariant="normal">∣</mi><mi mathvariant="normal">∣</mi><mi>u</mi><mi>s</mi><mi>e</mi><mi>r</mi><mi>I</mi><msub><mi>D</mi><mi>B</mi></msub><mi mathvariant="normal">∣</mi><mi mathvariant="normal">∣</mi><mi>c</mi><mi>h</mi><mi>a</mi><mi>n</mi><mi>n</mi><mi>e</mi><mi>l</mi><mi>I</mi><msub><mi>D</mi><mi>C</mi></msub><mi mathvariant="normal">∣</mi><mi mathvariant="normal">∣</mi><msub><mi>E</mi><mrow><mi>p</mi><msub><mi>k</mi><mi>B</mi></msub></mrow></msub><mo>(</mo><msub><mi>K</mi><mrow><mi>c</mi><mi>h</mi><mi>a</mi><mi>n</mi><mi>n</mi><mi>e</mi><mi>l</mi></mrow></msub><mo>)</mo></mrow><annotation encoding="application/x-tex">payload = userID_A || userID_B || channelID_C || E_{pk_B}(K_{channel})</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathdefault">p</span><span class="mord mathdefault">a</span><span class="mord mathdefault" style="margin-right:0.03588em;">y</span><span class="mord mathdefault" style="margin-right:0.01968em;">l</span><span class="mord mathdefault">o</span><span class="mord mathdefault">a</span><span class="mord mathdefault">d</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:1.036108em;vertical-align:-0.286108em;"></span><span class="mord mathdefault">u</span><span class="mord mathdefault">s</span><span class="mord mathdefault">e</span><span class="mord mathdefault" style="margin-right:0.02778em;">r</span><span class="mord mathdefault" style="margin-right:0.07847em;">I</span><span class="mord"><span class="mord mathdefault" style="margin-right:0.02778em;">D</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.32833099999999993em;"><span style="top:-2.5500000000000003em;margin-left:-0.02778em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathdefault mtight">A</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mord">∣</span><span class="mord">∣</span><span class="mord mathdefault">u</span><span class="mord mathdefault">s</span><span class="mord mathdefault">e</span><span class="mord mathdefault" style="margin-right:0.02778em;">r</span><span class="mord mathdefault" style="margin-right:0.07847em;">I</span><span class="mord"><span class="mord mathdefault" style="margin-right:0.02778em;">D</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.32833099999999993em;"><span style="top:-2.5500000000000003em;margin-left:-0.02778em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathdefault mtight" style="margin-right:0.05017em;">B</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mord">∣</span><span class="mord">∣</span><span class="mord mathdefault">c</span><span class="mord mathdefault">h</span><span class="mord mathdefault">a</span><span class="mord mathdefault">n</span><span class="mord mathdefault">n</span><span class="mord mathdefault">e</span><span class="mord mathdefault" style="margin-right:0.01968em;">l</span><span class="mord mathdefault" style="margin-right:0.07847em;">I</span><span class="mord"><span class="mord mathdefault" style="margin-right:0.02778em;">D</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.32833099999999993em;"><span style="top:-2.5500000000000003em;margin-left:-0.02778em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathdefault mtight" style="margin-right:0.07153em;">C</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mord">∣</span><span class="mord">∣</span><span class="mord"><span class="mord mathdefault" style="margin-right:0.05764em;">E</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361079999999999em;"><span style="top:-2.5500000000000003em;margin-left:-0.05764em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathdefault mtight">p</span><span class="mord mtight"><span class="mord mathdefault mtight" style="margin-right:0.03148em;">k</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3448em;"><span style="top:-2.3567071428571427em;margin-left:-0.03148em;margin-right:0.07142857142857144em;"><span class="pstrut" style="height:2.5em;"></span><span class="sizing reset-size3 size1 mtight"><span class="mord mathdefault mtight" style="margin-right:0.05017em;">B</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.14329285714285717em;"><span></span></span></span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.286108em;"><span></span></span></span></span></span></span><span class="mopen">(</span><span class="mord"><span class="mord mathdefault" style="margin-right:0.07153em;">K</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.33610799999999996em;"><span style="top:-2.5500000000000003em;margin-left:-0.07153em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathdefault mtight">c</span><span class="mord mathdefault mtight">h</span><span class="mord mathdefault mtight">a</span><span class="mord mathdefault mtight">n</span><span class="mord mathdefault mtight">n</span><span class="mord mathdefault mtight">e</span><span class="mord mathdefault mtight" style="margin-right:0.01968em;">l</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mclose">)</span></span></span></span></p>
+<p><span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>m</mi><mi>s</mi><mi>g</mi><mo>=</mo><mi>p</mi><mi>a</mi><mi>y</mi><mi>l</mi><mi>o</mi><mi>a</mi><mi>d</mi><mi mathvariant="normal">∣</mi><mi mathvariant="normal">∣</mi><msub><mi>S</mi><mrow><mi>s</mi><msub><mi>k</mi><mi>A</mi></msub></mrow></msub><mo>(</mo><mi>p</mi><mi>a</mi><mi>y</mi><mi>l</mi><mi>o</mi><mi>a</mi><mi>d</mi><mo>)</mo></mrow><annotation encoding="application/x-tex">msg = payload || S_{sk_A}(payload)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.625em;vertical-align:-0.19444em;"></span><span class="mord mathdefault">m</span><span class="mord mathdefault">s</span><span class="mord mathdefault" style="margin-right:0.03588em;">g</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:1.000305em;vertical-align:-0.250305em;"></span><span class="mord mathdefault">p</span><span class="mord mathdefault">a</span><span class="mord mathdefault" style="margin-right:0.03588em;">y</span><span class="mord mathdefault" style="margin-right:0.01968em;">l</span><span class="mord mathdefault">o</span><span class="mord mathdefault">a</span><span class="mord mathdefault">d</span><span class="mord">∣</span><span class="mord">∣</span><span class="mord"><span class="mord mathdefault" style="margin-right:0.05764em;">S</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.33610799999999996em;"><span style="top:-2.5500000000000003em;margin-left:-0.05764em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathdefault mtight">s</span><span class="mord mtight"><span class="mord mathdefault mtight" style="margin-right:0.03148em;">k</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3448em;"><span style="top:-2.3567071428571427em;margin-left:-0.03148em;margin-right:0.07142857142857144em;"><span class="pstrut" style="height:2.5em;"></span><span class="sizing reset-size3 size1 mtight"><span class="mord mathdefault mtight">A</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.14329285714285717em;"><span></span></span></span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.250305em;"><span></span></span></span></span></span></span><span class="mopen">(</span><span class="mord mathdefault">p</span><span class="mord mathdefault">a</span><span class="mord mathdefault" style="margin-right:0.03588em;">y</span><span class="mord mathdefault" style="margin-right:0.01968em;">l</span><span class="mord mathdefault">o</span><span class="mord mathdefault">a</span><span class="mord mathdefault">d</span><span class="mclose">)</span></span></span></span></p>
+<ul>
+<li>This message is used for creating a new channel or adding a new member to it.</li>
+<li>The above message is user <code>A</code> adding user <code>B</code> to channel <code>C</code>.</li>
+<li>The channel key is encrypted with the public key of user <code>B</code>, this way sharing it with her and only her.</li>
+<li>The whole message is signed by user <code>A</code>, proving that the message is originating from a user that is part of channel <code>C</code>.</li>
+<li>If <code>A == B</code>, and <code>C</code> doesn't exist yet, this is the creation of a new channel
+<ul>
+<li>In this case, if <code>C</code> already exists, this message is ignored</li>
+</ul>
+</li>
+<li>This message is also ignored if <code>A</code> is not part of channel <code>C</code>, or if the signature is invalid.</li>
+<li>This message is broadcasted (by the server) to all users in channel <code>C</code>, including the new user <code>B</code>.</li>
+</ul>
+<h3 id="communication-message">Communication message</h3>
+<p><span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>a</mi><mi>s</mi><mi>s</mi><mi>o</mi><mi>c</mi><mi mathvariant="normal">_</mi><mi>d</mi><mi>a</mi><mi>t</mi><mi>a</mi><mo>=</mo><mi>c</mi><mi>h</mi><mi>a</mi><mi>n</mi><mi>n</mi><mi>e</mi><mi>l</mi><mi>I</mi><msub><mi>D</mi><mi>C</mi></msub><mi mathvariant="normal">∣</mi><mi mathvariant="normal">∣</mi><mi>C</mi><mi>h</mi><mi>a</mi><mi>n</mi><mi>n</mi><mi>e</mi><mi>l</mi><mi>S</mi><mi>e</mi><mi>q</mi><mi>N</mi><mi>u</mi><msub><mi>m</mi><mi>C</mi></msub><mi mathvariant="normal">∣</mi><mi mathvariant="normal">∣</mi><mi>u</mi><mi>s</mi><mi>e</mi><mi>r</mi><mi>I</mi><msub><mi>D</mi><mi>A</mi></msub><mi mathvariant="normal">∣</mi><mi mathvariant="normal">∣</mi><mi>U</mi><mi>s</mi><mi>e</mi><mi>r</mi><mi>S</mi><mi>e</mi><mi>q</mi><mi>N</mi><mi>u</mi><msub><mi>m</mi><mi>A</mi></msub></mrow><annotation encoding="application/x-tex">assoc\_data = channelID_{C} || ChannelSeqNum_C || userID_A || UserSeqNum_A</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.00444em;vertical-align:-0.31em;"></span><span class="mord mathdefault">a</span><span class="mord mathdefault">s</span><span class="mord mathdefault">s</span><span class="mord mathdefault">o</span><span class="mord mathdefault">c</span><span class="mord" style="margin-right:0.02778em;">_</span><span class="mord mathdefault">d</span><span class="mord mathdefault">a</span><span class="mord mathdefault">t</span><span class="mord mathdefault">a</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathdefault">c</span><span class="mord mathdefault">h</span><span class="mord mathdefault">a</span><span class="mord mathdefault">n</span><span class="mord mathdefault">n</span><span class="mord mathdefault">e</span><span class="mord mathdefault" style="margin-right:0.01968em;">l</span><span class="mord mathdefault" style="margin-right:0.07847em;">I</span><span class="mord"><span class="mord mathdefault" style="margin-right:0.02778em;">D</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.32833099999999993em;"><span style="top:-2.5500000000000003em;margin-left:-0.02778em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathdefault mtight" style="margin-right:0.07153em;">C</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mord">∣</span><span class="mord">∣</span><span class="mord mathdefault" style="margin-right:0.07153em;">C</span><span class="mord mathdefault">h</span><span class="mord mathdefault">a</span><span class="mord mathdefault">n</span><span class="mord mathdefault">n</span><span class="mord mathdefault">e</span><span class="mord mathdefault" style="margin-right:0.01968em;">l</span><span class="mord mathdefault" style="margin-right:0.05764em;">S</span><span class="mord mathdefault">e</span><span class="mord mathdefault" style="margin-right:0.03588em;">q</span><span class="mord mathdefault" style="margin-right:0.10903em;">N</span><span class="mord mathdefault">u</span><span class="mord"><span class="mord mathdefault">m</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.32833099999999993em;"><span style="top:-2.5500000000000003em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathdefault mtight" style="margin-right:0.07153em;">C</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mord">∣</span><span class="mord">∣</span><span class="mord mathdefault">u</span><span class="mord mathdefault">s</span><span class="mord mathdefault">e</span><span class="mord mathdefault" style="margin-right:0.02778em;">r</span><span class="mord mathdefault" style="margin-right:0.07847em;">I</span><span class="mord"><span class="mord mathdefault" style="margin-right:0.02778em;">D</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.32833099999999993em;"><span style="top:-2.5500000000000003em;margin-left:-0.02778em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathdefault mtight">A</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mord">∣</span><span class="mord">∣</span><span class="mord mathdefault" style="margin-right:0.10903em;">U</span><span class="mord mathdefault">s</span><span class="mord mathdefault">e</span><span class="mord mathdefault" style="margin-right:0.02778em;">r</span><span class="mord mathdefault" style="margin-right:0.05764em;">S</span><span class="mord mathdefault">e</span><span class="mord mathdefault" style="margin-right:0.03588em;">q</span><span class="mord mathdefault" style="margin-right:0.10903em;">N</span><span class="mord mathdefault">u</span><span class="mord"><span class="mord mathdefault">m</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.32833099999999993em;"><span style="top:-2.5500000000000003em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathdefault mtight">A</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span></p>
+<p><span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>e</mi><mi>n</mi><mi>c</mi><mi mathvariant="normal">_</mi><mi>d</mi><mi>a</mi><mi>t</mi><mi>a</mi><mo>=</mo><mi>m</mi><mi>e</mi><mi>s</mi><mi>s</mi><mi>a</mi><mi>g</mi><mi>e</mi><mi mathvariant="normal">_</mi><mi>t</mi><mi>e</mi><mi>x</mi><mi>t</mi></mrow><annotation encoding="application/x-tex">enc\_data = message\_text</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.00444em;vertical-align:-0.31em;"></span><span class="mord mathdefault">e</span><span class="mord mathdefault">n</span><span class="mord mathdefault">c</span><span class="mord" style="margin-right:0.02778em;">_</span><span class="mord mathdefault">d</span><span class="mord mathdefault">a</span><span class="mord mathdefault">t</span><span class="mord mathdefault">a</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:0.9250799999999999em;vertical-align:-0.31em;"></span><span class="mord mathdefault">m</span><span class="mord mathdefault">e</span><span class="mord mathdefault">s</span><span class="mord mathdefault">s</span><span class="mord mathdefault">a</span><span class="mord mathdefault" style="margin-right:0.03588em;">g</span><span class="mord mathdefault">e</span><span class="mord" style="margin-right:0.02778em;">_</span><span class="mord mathdefault">t</span><span class="mord mathdefault">e</span><span class="mord mathdefault">x</span><span class="mord mathdefault">t</span></span></span></span></p>
+<p><span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>m</mi><mi>s</mi><mi>g</mi><mo>=</mo><msubsup><mi>E</mi><msub><mi>K</mi><mrow><mi>c</mi><mi>h</mi><mi>a</mi><mi>n</mi><mi>n</mi><mi>e</mi><mi>l</mi></mrow></msub><mrow><mi>G</mi><mi>C</mi><mi>M</mi></mrow></msubsup><mo fence="true">(</mo><mi>a</mi><mi>s</mi><mi>s</mi><mi>o</mi><mi>c</mi><mi mathvariant="normal">_</mi><mi>d</mi><mi>a</mi><mi>t</mi><mi>a</mi><mo separator="true">,</mo><mi>e</mi><mi>n</mi><mi>c</mi><mi mathvariant="normal">_</mi><mi>d</mi><mi>a</mi><mi>t</mi><mi>a</mi><mi mathvariant="normal">∣</mi><mi mathvariant="normal">∣</mi><msub><mi>S</mi><mrow><mi>s</mi><msub><mi>k</mi><mi>A</mi></msub></mrow></msub><mo>(</mo><mi>a</mi><mi>s</mi><mi>s</mi><mi>o</mi><mi>c</mi><mi mathvariant="normal">_</mi><mi>d</mi><mi>a</mi><mi>t</mi><mi>a</mi><mi mathvariant="normal">∣</mi><mi mathvariant="normal">∣</mi><mi>e</mi><mi>n</mi><mi>c</mi><mi mathvariant="normal">_</mi><mi>d</mi><mi>a</mi><mi>t</mi><mi>a</mi><mo>)</mo><mo fence="true">)</mo></mrow><annotation encoding="application/x-tex">msg = E_{K_{channel}}^{GCM}\bigl(assoc\_data, enc\_data || S_{sk_A}(assoc\_data || enc\_data)\bigr)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.625em;vertical-align:-0.19444em;"></span><span class="mord mathdefault">m</span><span class="mord mathdefault">s</span><span class="mord mathdefault" style="margin-right:0.03588em;">g</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:1.231191em;vertical-align:-0.38119099999999995em;"></span><span class="mord"><span class="mord mathdefault" style="margin-right:0.05764em;">E</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.8413309999999999em;"><span style="top:-2.424669em;margin-left:-0.05764em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight"><span class="mord mathdefault mtight" style="margin-right:0.07153em;">K</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3448em;"><span style="top:-2.3487714285714287em;margin-left:-0.07153em;margin-right:0.07142857142857144em;"><span class="pstrut" style="height:2.5em;"></span><span class="sizing reset-size3 size1 mtight"><span class="mord mtight"><span class="mord mathdefault mtight">c</span><span class="mord mathdefault mtight">h</span><span class="mord mathdefault mtight">a</span><span class="mord mathdefault mtight">n</span><span class="mord mathdefault mtight">n</span><span class="mord mathdefault mtight">e</span><span class="mord mathdefault mtight" style="margin-right:0.01968em;">l</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15122857142857138em;"><span></span></span></span></span></span></span></span></span></span><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathdefault mtight">G</span><span class="mord mathdefault mtight" style="margin-right:0.07153em;">C</span><span class="mord mathdefault mtight" style="margin-right:0.10903em;">M</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.38119099999999995em;"><span></span></span></span></span></span></span><span class="mopen"><span class="delimsizing size1">(</span></span><span class="mord mathdefault">a</span><span class="mord mathdefault">s</span><span class="mord mathdefault">s</span><span class="mord mathdefault">o</span><span class="mord mathdefault">c</span><span class="mord" style="margin-right:0.02778em;">_</span><span class="mord mathdefault">d</span><span class="mord mathdefault">a</span><span class="mord mathdefault">t</span><span class="mord mathdefault">a</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord mathdefault">e</span><span class="mord mathdefault">n</span><span class="mord mathdefault">c</span><span class="mord" style="margin-right:0.02778em;">_</span><span class="mord mathdefault">d</span><span class="mord mathdefault">a</span><span class="mord mathdefault">t</span><span class="mord mathdefault">a</span><span class="mord">∣</span><span class="mord">∣</span><span class="mord"><span class="mord mathdefault" style="margin-right:0.05764em;">S</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.33610799999999996em;"><span style="top:-2.5500000000000003em;margin-left:-0.05764em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathdefault mtight">s</span><span class="mord mtight"><span class="mord mathdefault mtight" style="margin-right:0.03148em;">k</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3448em;"><span style="top:-2.3567071428571427em;margin-left:-0.03148em;margin-right:0.07142857142857144em;"><span class="pstrut" style="height:2.5em;"></span><span class="sizing reset-size3 size1 mtight"><span class="mord mathdefault mtight">A</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.14329285714285717em;"><span></span></span></span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.250305em;"><span></span></span></span></span></span></span><span class="mopen">(</span><span class="mord mathdefault">a</span><span class="mord mathdefault">s</span><span class="mord mathdefault">s</span><span class="mord mathdefault">o</span><span class="mord mathdefault">c</span><span class="mord" style="margin-right:0.02778em;">_</span><span class="mord mathdefault">d</span><span class="mord mathdefault">a</span><span class="mord mathdefault">t</span><span class="mord mathdefault">a</span><span class="mord">∣</span><span class="mord">∣</span><span class="mord mathdefault">e</span><span class="mord mathdefault">n</span><span class="mord mathdefault">c</span><span class="mord" style="margin-right:0.02778em;">_</span><span class="mord mathdefault">d</span><span class="mord mathdefault">a</span><span class="mord mathdefault">t</span><span class="mord mathdefault">a</span><span class="mclose">)</span><span class="mclose"><span class="delimsizing size1">)</span></span></span></span></span></p>
+<ul>
+<li>This message is used for sending a text message to channel <code>C</code>, the sender's ID being <code>A</code>.</li>
+<li>This message is encrypted with the channel key, in <code>GCM</code> mode (with a random IV), with <code>channelID</code>, <code>ChannelSeqNum</code> and <code>UserSeqNum</code> being the associated data so the server can determine the channel, and possible sequence number duplications. The rest of the data is encrypted. Both the encrypted data and associated data are signed with the sender's signing key, so the sender cannot be impersonated.</li>
+<li>The server broadcasts this message to all channel <code>C</code> participants.</li>
+<li>Recipients check the following, and only accepts the message if all checks are successful:
+<ul>
+<li>User <code>A</code> is part of the channel <code>C</code></li>
+<li>The <span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>C</mi><mi>h</mi><mi>a</mi><mi>n</mi><mi>n</mi><mi>e</mi><mi>l</mi><mi>S</mi><mi>e</mi><mi>q</mi><mi>N</mi><mi>u</mi><msub><mi>m</mi><mi>C</mi></msub></mrow><annotation encoding="application/x-tex">ChannelSeqNum_C</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathdefault" style="margin-right:0.07153em;">C</span><span class="mord mathdefault">h</span><span class="mord mathdefault">a</span><span class="mord mathdefault">n</span><span class="mord mathdefault">n</span><span class="mord mathdefault">e</span><span class="mord mathdefault" style="margin-right:0.01968em;">l</span><span class="mord mathdefault" style="margin-right:0.05764em;">S</span><span class="mord mathdefault">e</span><span class="mord mathdefault" style="margin-right:0.03588em;">q</span><span class="mord mathdefault" style="margin-right:0.10903em;">N</span><span class="mord mathdefault">u</span><span class="mord"><span class="mord mathdefault">m</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.32833099999999993em;"><span style="top:-2.5500000000000003em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathdefault mtight" style="margin-right:0.07153em;">C</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span> is higher than all previous values in channel <code>C</code></li>
+<li>The <span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>U</mi><mi>s</mi><mi>e</mi><mi>r</mi><mi>S</mi><mi>e</mi><mi>q</mi><mi>N</mi><mi>u</mi><msub><mi>m</mi><mi>A</mi></msub></mrow><annotation encoding="application/x-tex">UserSeqNum_A</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8777699999999999em;vertical-align:-0.19444em;"></span><span class="mord mathdefault" style="margin-right:0.10903em;">U</span><span class="mord mathdefault">s</span><span class="mord mathdefault">e</span><span class="mord mathdefault" style="margin-right:0.02778em;">r</span><span class="mord mathdefault" style="margin-right:0.05764em;">S</span><span class="mord mathdefault">e</span><span class="mord mathdefault" style="margin-right:0.03588em;">q</span><span class="mord mathdefault" style="margin-right:0.10903em;">N</span><span class="mord mathdefault">u</span><span class="mord"><span class="mord mathdefault">m</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.32833099999999993em;"><span style="top:-2.5500000000000003em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathdefault mtight">A</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span> is higher than all previous values associated with user <code>A</code></li>
+<li>All MACs and signatures are valid</li>
+</ul>
+</li>
+</ul>
+<h3 id="secure-channel-init-message">Secure channel init message</h3>
+<p>The above mentioned secure channel is built with the following message, sent by the client to the server. <code>initconn</code> is sent by the client, and <code>initkey</code> is sent by the server.</p>
+<p><span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>i</mi><mi>n</mi><mi>i</mi><mi>t</mi><mi>c</mi><mi>o</mi><mi>n</mi><mi>n</mi><mo>=</mo><mi>u</mi><mi>s</mi><mi>e</mi><mi>r</mi><mi>I</mi><mi>D</mi><mi mathvariant="normal">∣</mi><mi mathvariant="normal">∣</mi><mi>r</mi><mi>n</mi><mi>d</mi></mrow><annotation encoding="application/x-tex">initconn = userID || rnd</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.65952em;vertical-align:0em;"></span><span class="mord mathdefault">i</span><span class="mord mathdefault">n</span><span class="mord mathdefault">i</span><span class="mord mathdefault">t</span><span class="mord mathdefault">c</span><span class="mord mathdefault">o</span><span class="mord mathdefault">n</span><span class="mord mathdefault">n</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathdefault">u</span><span class="mord mathdefault">s</span><span class="mord mathdefault">e</span><span class="mord mathdefault" style="margin-right:0.02778em;">r</span><span class="mord mathdefault" style="margin-right:0.07847em;">I</span><span class="mord mathdefault" style="margin-right:0.02778em;">D</span><span class="mord">∣</span><span class="mord">∣</span><span class="mord mathdefault" style="margin-right:0.02778em;">r</span><span class="mord mathdefault">n</span><span class="mord mathdefault">d</span></span></span></span><br>
+<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>i</mi><mi>n</mi><mi>i</mi><mi>t</mi><mi>k</mi><mi>e</mi><mi>y</mi><mo>=</mo><msub><mi>E</mi><msub><mi>K</mi><mrow><mi>u</mi><mi>s</mi><mi>e</mi><mi>r</mi></mrow></msub></msub><mo fence="true">(</mo><mi>s</mi><mi>y</mi><mi>m</mi><mi>k</mi><mi>e</mi><mi>y</mi><mo separator="true">,</mo><msub><mi>S</mi><mrow><mi>s</mi><mi>e</mi><mi>r</mi><mi>v</mi><mi>e</mi><mi>r</mi></mrow></msub><mo>(</mo><mi>r</mi><mi>n</mi><mi>d</mi><mo separator="true">,</mo><mi>s</mi><mi>y</mi><mi>m</mi><mi>k</mi><mi>e</mi><mi>y</mi><mo>)</mo><mo fence="true">)</mo></mrow><annotation encoding="application/x-tex">initkey = E_{K_{user}}\bigl(symkey, S_{server}(rnd, symkey)\bigr)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathdefault">i</span><span class="mord mathdefault">n</span><span class="mord mathdefault">i</span><span class="mord mathdefault">t</span><span class="mord mathdefault" style="margin-right:0.03148em;">k</span><span class="mord mathdefault">e</span><span class="mord mathdefault" style="margin-right:0.03588em;">y</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:1.20001em;vertical-align:-0.35001em;"></span><span class="mord"><span class="mord mathdefault" style="margin-right:0.05764em;">E</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.32833099999999993em;"><span style="top:-2.5500000000000003em;margin-left:-0.05764em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight"><span class="mord mathdefault mtight" style="margin-right:0.07153em;">K</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.16454285714285719em;"><span style="top:-2.357em;margin-left:-0.07153em;margin-right:0.07142857142857144em;"><span class="pstrut" style="height:2.5em;"></span><span class="sizing reset-size3 size1 mtight"><span class="mord mtight"><span class="mord mathdefault mtight">u</span><span class="mord mathdefault mtight">s</span><span class="mord mathdefault mtight">e</span><span class="mord mathdefault mtight" style="margin-right:0.02778em;">r</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.143em;"><span></span></span></span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2501em;"><span></span></span></span></span></span></span><span class="mopen"><span class="delimsizing size1">(</span></span><span class="mord mathdefault">s</span><span class="mord mathdefault" style="margin-right:0.03588em;">y</span><span class="mord mathdefault">m</span><span class="mord mathdefault" style="margin-right:0.03148em;">k</span><span class="mord mathdefault">e</span><span class="mord mathdefault" style="margin-right:0.03588em;">y</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord"><span class="mord mathdefault" style="margin-right:0.05764em;">S</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.151392em;"><span style="top:-2.5500000000000003em;margin-left:-0.05764em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathdefault mtight">s</span><span class="mord mathdefault mtight">e</span><span class="mord mathdefault mtight" style="margin-right:0.02778em;">r</span><span class="mord mathdefault mtight" style="margin-right:0.03588em;">v</span><span class="mord mathdefault mtight">e</span><span class="mord mathdefault mtight" style="margin-right:0.02778em;">r</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mopen">(</span><span class="mord mathdefault" style="margin-right:0.02778em;">r</span><span class="mord mathdefault">n</span><span class="mord mathdefault">d</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord mathdefault">s</span><span class="mord mathdefault" style="margin-right:0.03588em;">y</span><span class="mord mathdefault">m</span><span class="mord mathdefault" style="margin-right:0.03148em;">k</span><span class="mord mathdefault">e</span><span class="mord mathdefault" style="margin-right:0.03588em;">y</span><span class="mclose">)</span><span class="mclose"><span class="delimsizing size1">)</span></span></span></span></span></p>
+<ul>
+<li>when a user wants to connect to the server, she sends a fresh random value and her <code>userID</code></li>
+<li><code>symkey</code> is generated by the server, and will be used for the secure connection in GCM mode, and encrypt <code>initkey</code> message with the respective user's public key</li>
+<li>the client will decrypt the message and verify the signature (with the server's key) on <code>symkey</code> and `rnd, and if correct, will switch to this key on the current connection</li>
+<li>other</li>
+</ul>
+<h1 id="security-analysis">Security Analysis</h1>
+<p>We consider the following scenarios according to the previously described attacker model and capabilities.</p>
+<h2 id="recover-private-key-of-user">Recover private key of user</h2>
+<p>The private key of users are stored encrypted, and they can accessed if they are correctly decrypted using the secret password of the given user. These private keys are never sent through the network.</p>
+<h2 id="recover-symmetric-key-of-a-channel">Recover symmetric key of a channel</h2>
+<p>The channel key is generated by the user creating a given channel. Each new channel participant receives the key, encrypted by their public key. Thus, the attacker can only recover the channel key if she breaks the public key encryption or steals the private key of some channel participant.</p>
+<h2 id="add-user-to-arbitrary-channel">Add user to arbitrary channel</h2>
+<p>The message that is used to add participants to a channel is signed with the private signing key of a user who is already part of the given channel, otherwise the message will be rejected. If the signature is invalid, the message will also be rejected.</p>
+<h2 id="read-or-send-messages-in-arbitrary-channel">Read or send messages in arbitrary channel</h2>
+<p>In order to read or send messages in a channel, the channel key is necessary to encrypt or decrypt the message. Additionally, even if the attacker can steal the channel key somehow, she will only be able to read messages, because messages need to be signed with the sender's private signing key.</p>
+<h2 id="message-forgery-modification-and-replay">Message forgery, modification and replay</h2>
+<p>Message modification is prevented by GCM mode and the sender's signature on the message, so even if the attacker knows the channel key she can not modify the message or impersonate anyone.</p>
+<p>Message replay is prevented by the use of a channel-wide sequence number.</p>
 
-</body>
-
-</html>
+    </body>
+    </html>
