@@ -1,3 +1,4 @@
+from StringKeys import kk
 
 def main_menu(address, channels):
     print()
@@ -53,6 +54,11 @@ def display_channel(name):
 
 def display_message(sender, timestamp, msg):
     print(f"\r[{timestamp}] {sender} :: {msg}")
+    print()
+
+
+def display_invite(msg):
+    print(f"\r* [{msg[kk.timestamp]}] {msg[kk.inviter]} invited {msg[kk.invitee]} to the channel! *")
     print()
 
 

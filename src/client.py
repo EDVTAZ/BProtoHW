@@ -5,47 +5,38 @@ import threading
 import frontend
 import json
 import messaging.client
+import messaging.common
+import copy
+import config
+from StringKeys import kk
+from session import Session
+from Crypto.Cipher import AES
+from Crypto.Random import get_random_bytes
+from Crypto.PublicKey import RSA
+from Crypto.Hash import SHA256
+from Crypto.Signature import pss
+from base64 import b64decode, b64encode
 
-STORAGE = None
-CHAN = ""
-ADDRESS = ""
-SOCK = None
-USER, PW = "", ""
-SYMKEY = None
-create_chan_event = threading.Event()
-invite_event = threading.Event()
-replay_finished = threading.Event()
+
+SESSION = None
 
 
 def run(address, storagePath):
-    global STORAGE
-    global CHAN
-    global ADDRESS
-    global SOCK
-    global USER
-    global PW
-    global SYMKEY
-    global create_chan_event
-    global invite_event
-    global replay_finished
-
-    create_chan_event.clear()
-    invite_event.clear()
-    replay_finished.clear()
+    global SESSION
 
     with open(storagePath, 'rt') as f:
-        STORAGE = json.load(f)
-        STORAGE['channels'] = dict()
+        storage = json.load(f)
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        ADDRESS = address
         ip, port = address.split(':')
         address = (ip, int(port))
         sock.connect(address)
-        SOCK = sock
 
-        USER, PW = frontend.get_user()
-        SYMKEY = messaging.client.init_connection(sock, USER)
+        user, pw = frontend.get_user()
+
+        SESSION = Session(
+            storage=storage, saddr=address, socket=sock, user=user, pw=pw)
+        messaging.client.init_connection(SESSION)
 
         frontend_thread = threading.Thread(target=main_menu)
         frontend_thread.start()
@@ -54,117 +45,53 @@ def run(address, storagePath):
 
 
 def listen(sock):
-    global STORAGE
-    global CHAN
-    global ADDRESS
-    global SOCK
-    global USER
-    global PW
-    global SYMKEY
-    global create_chan_event
-    global invite_event
-    global replay_finished
+    global SESSION
 
     while True:
-        msg = messaging.common.recv_message(sock, SYMKEY)
+        msg = messaging.common.recv_message(sock, SESSION.symkey)
         print(f"recvd: {msg}")
+        mt = msg[kk.typ]
+        if mt in (kk.add_user, kk.comms) and kk.timestamp not in msg:
+            # no timestamp attached means this is a replayed message => drop it
+            print('Replayed message detected')
+            continue
 
-# ==============================================================================
-        if msg['type'] == "addUser":
-            stored_format = {
-                'inviter': msg['inviter'],
-                'payload': msg,
-                'timestamp': msg['timestamp']
-            }
-            if msg['inviter'] == msg['invitee']:
-                create_chan_event.set()
-                if msg['channelID'] not in STORAGE['channels']:
-                    STORAGE['channels'][msg['channelID']] = {
-                        'invites': {
-                            msg['invitee']: stored_format},
-                        'messages': []
-                    }
-                if msg['invitee'] == USER:
-                    # TODO recover key and verify contents
-                    STORAGE['channels'][msg['channelID']
-                                        ]['channelkey'] = b"asdf"
-            else:
-                invite_event.set()
-                STORAGE['channels'][msg['channelID']
-                                    ]['invites'][msg['invitee']] = stored_format
-                if msg['invitee'] == USER:
-                    # TODO recover key and verify contents
-                    STORAGE['channels'][msg['channelID']
-                                        ]['channelkey'] = b"asdf"
-# ==============================================================================
-        elif msg['type'] == "comms":
-            # TODO decrypt message
-            STORAGE['channels'][msg['channelID']
-                                ]['messages'].append({
-                                    'timestamp': msg['timestamp'],
-                                    'sender': msg['userID'],
-                                    'text': msg['msg'],
-                                    'payload': msg
-                                })  # TODO
-            if CHAN == msg['channelID']:
-                frontend.display_message(
-                    msg['sender'], msg['timestamp'], msg['msg'])
-# ==============================================================================
-        elif msg['type'] == "replayFinished":
-            replay_finished.set()
-# ==============================================================================
+        if mt == kk.add_user:
+            SESSION.add_user(msg)
+        elif mt == kk.comms:
+            SESSION.incomm(msg)
+        elif mt == kk.replay_finished:
+            SESSION.replay_finished.set()
 
 
 def main_menu():
-    global STORAGE
-    global CHAN
-    global ADDRESS
-    global SOCK
-    global USER
-    global PW
-    global SYMKEY
-    global create_chan_event
-    global invite_event
-    global replay_finished
+    global SESSION
 
-    replay_finished.wait()
-    choice = frontend.main_menu(ADDRESS, STORAGE['storage']['channels'].keys())
+    SESSION.replay_finished.wait()
+    choice = frontend.main_menu(SESSION.saddr, SESSION.get_channels())
 
     while choice == None:
         new_chan = frontend.new_channel()  # check if there is no name collision TODO
-        create_chan_event.clear()
-        messaging.client.new_channel(SOCK, USER, new_chan)
-        create_chan_event.wait()
+        messaging.client.new_channel(SESSION, new_chan)
+        SESSION.create_chan_event.wait()
 
-        while new_chan not in STORAGE['storage']['channels']:
+        while new_chan not in SESSION.get_channels():
             frontend.failure('of reasons')
             new_chan = frontend.new_channel()  # check if there is no name collision TODO
 
-            create_chan_event.clear()
-            messaging.client.new_channel(SOCK, USER, new_chan)
-            create_chan_event.wait()
+            messaging.client.new_channel(SESSION, new_chan)
+            SESSION.create_chan_event.wait()
 
         frontend.success()
-        choice = frontend.main_menu(
-            ADDRESS, STORAGE['storage']['channels'].keys())
+        choice = frontend.main_menu(SESSION.saddr, SESSION.get_channels())
 
     chat(choice)
 
 
 def chat(channel):
-    global STORAGE
-    global CHAN
-    global ADDRESS
-    global SOCK
-    global USER
-    global PW
-    global SYMKEY
-    global create_chan_event
-    global invite_event
-    global replay_finished
+    global SESSION
 
-    CHAN = channel
-
+    SESSION.chan = channel
     frontend.display_channel(channel)
 
     iii = ""
@@ -172,15 +99,21 @@ def chat(channel):
         iii += sys.stdin.read(1)
 
         if iii[-1] == '\n':
-            messaging.client.send_msg(SOCK, channel, USER, iii)
+            messaging.client.send_msg(SESSION, iii)
             iii = ""
+        elif iii == ':exit':
+            SESSION.persist()
+            exit(0)
         elif iii == ':invite':
             iii = ""
             user = frontend.invite_user()
-            invite_event.clear()
-            messaging.client.invite_user(SOCK, channel, USER, user)
-            invite_event.wait()
+            messaging.client.invite_user(SESSION, user)
+            SESSION.invite_event.wait()
             if True:  # TODO check if user invite was successful
                 frontend.success()
             else:
                 frontend.failure('of reasons')
+        elif iii[-1] == '\b':
+            iii = iii[0:-1]
+
+        frontend.type_message(iii)

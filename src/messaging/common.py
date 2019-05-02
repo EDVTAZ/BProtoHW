@@ -1,6 +1,10 @@
 import json
-from Crypto.Cipher import AES
+from Crypto.Cipher import AES, PKCS1_OAEP
+from Crypto.Hash import SHA256
+from Crypto.Signature import pss
 import base64 as b64
+import copy
+from StringKeys import kk
 
 
 class ClientDisconnected(Exception):
@@ -64,3 +68,57 @@ def send_msg(sock, msg, key=None):
         msg = encrypt_sym(msg, key)
 
     sock.sendall(pack_msg(msg))
+
+
+def verify_sig(json_payload, signature, cert):
+    p = json.dumps(json_payload).encode()
+    h = SHA256.new(p)
+    verifier = pss.new(cert)
+    try:
+        verifier.verify(h, signature)
+        return True
+    except (ValueError, TypeError):
+        return False
+
+
+def check_msg_sig(session, msg, extra=None):
+    payload = copy.deepcopy(msg)
+    payload.pop(kk.signature, None)
+    payload.pop(kk.timestamp, None)
+    if extra != None:
+        payload[kk.nonce] = extra
+    return verify_sig(payload, b64.b64decode(msg[kk.signature]), session.get_signing_cert(select_cert(msg)))
+
+
+def create_sig(json_payload, cert):
+    p = json.dumps(json_payload).encode()
+    h = SHA256.new(p)
+    signer = pss.new(cert)
+    return signer.sign(h)
+
+
+def create_msg_sig(session, msg, extra=None):
+    payload = copy.deepcopy(msg)
+    if extra != None:
+        payload[kk.nonce] = extra
+    return create_sig(payload, session.signing_key)
+    
+
+def select_cert(msg):
+    mt = msg[kk.typ]
+    if mt == kk.add_user:
+        return msg[kk.inviter]
+    if mt == kk.comms:
+        return msg[kk.user]
+    if mt == kk.init_key:
+        return kk.server_key
+
+
+def pkc_encrypt(msg, key):
+    cipher = PKCS1_OAEP.new(key)
+    return cipher.encrypt(msg)
+    
+
+def pkc_decrypt(msg, key):
+    cipher = PKCS1_OAEP.new(key)
+    return cipher.decrypt(msg)

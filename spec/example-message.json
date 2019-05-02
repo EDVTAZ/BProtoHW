@@ -4,17 +4,21 @@
         "inviter":"userIDa",
         "invitee":"userIDb",
         "channelID":"channelID",
-        "channelKey":"AAAA====",
-        "signature":"BBBB===="
+        "channelkey":"AAAA====",
+        "signature":"BBBB====",
+        "timestamp": 12341234
     },
     {
         "type":"comms",
-        "nonce":123213,
         "channelID":"channelID",
         "channelSeq":123213,
         "userID":"userIDa",
         "userSeq":123123,
-        "msg":"AAAA====",
+        "msg":{
+		"nonce":"AAA===",
+		"tag": "AAA====",
+		"ct": "AAA===="
+	},
         "signature":"BBBB====",
         "timestamp": 12341234
     },    

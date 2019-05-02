@@ -15,11 +15,13 @@
     "channels": {
         "channel1": {
             "channelkey": "AAAA====",
+	    "seqNum": 123,
             "invites": {
                 "userid2": {
                     "inviter": "userid1",
                     "payload": "AAAA====",
-                    "timestamp": 12341234
+                    "timestamp": 12341234,
+		    "seqNum": 234
                 },
                 "userid3": {}
             },
