@@ -9,7 +9,6 @@ import messaging.common
 import copy
 import config
 from StringKeys import kk
-from session import Session
 from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
 from Crypto.PublicKey import RSA
@@ -19,6 +18,7 @@ from base64 import b64decode, b64encode
 
 class Session():
     def __init__(self, storage, saddr, socket, user=None, pw=None):
+        storage = copy.deepcopy(storage)
         storage[kk.chs] = dict()
         for u in storage[kk.certs]:
             storage[kk.certs][u][kk.signing][kk.public] = RSA.import_key(
@@ -45,25 +45,30 @@ class Session():
         self.replay_finished.clear()
 
     def decrypt_privkeys(self):
-        if self.pw == None:
-            # TODO import server keys
-            return None, None
-        rsk = b64decode(self.storage[kk.certs]
-                        [self.user][kk.signing][kk.private])
-        rek = b64decode(self.storage[kk.certs]
-                        [self.user][kk.encryption][kk.private])
-        return RSA.import_key(rsk, self.pw), RSA.import_key(rek, self.pw)
+        try: 
+            if self.pw == None:
+                return None, None
+            rsk = b64decode(self.storage[kk.certs]
+                            [self.user][kk.signing][kk.private])
+            rek = b64decode(self.storage[kk.certs]
+                            [self.user][kk.encryption][kk.private])
+            return RSA.import_key(rsk, self.pw), RSA.import_key(rek, self.pw)
+        except:
+            print("Incorrect username or password.")
+            exit(3)
 
     def get_signing_cert(self, username):
         try:
             return self.storage[kk.certs][username][kk.signing][kk.public]
-        except:
+        except Exception as e:
+            print(e)
             return None
 
     def get_encryption_cert(self, username):
         try:
-            return storage[kk.certs][username][kk.encryption][kk.public]
-        except:
+            return self.storage[kk.certs][username][kk.encryption][kk.public]
+        except Exception as e:
+            print(e)
             return None
 
     def get_channel_key(self, channel=None):
@@ -106,7 +111,7 @@ class Session():
             return False
 
     def get_channels(self):
-        return self.storage[kk.chs].keys()
+        return list(self.storage[kk.chs].keys())
 
     def add_user(self, msg):
         if not messaging.common.check_msg_sig(self, msg):
@@ -135,7 +140,7 @@ class Session():
         else:
             if msg[kk.invitee] in self.storage[kk.chs][msg[kk.chid]][kk.invites]:
                 return
-            invite_event.set()
+            self.invite_event.set()
             self.storage[kk.chs][msg[kk.chid]
                                  ][kk.invites][msg[kk.invitee]] = stored_format
             if msg[kk.invitee] == self.user:
@@ -148,15 +153,24 @@ class Session():
     def incomm(self, msg):
         try:
             pt_msg = messaging.client.decrypt_comm(msg, self)
-        except:
+        except Exception as e:
+            print(e)
             return
 
-        if (not messaging.common.check_msg_sig(msg, self) or
-            msg[kk.user] not in self.storage[kk.chs][msg[kk.chid]][kk.invites] or
-                self.check_seqnum(msg[kk.user], msg[kk.userseq], msg[kk.chid], msg[kk.chseq])):
+        if not messaging.common.check_msg_sig(self, msg):
+            print("Sender signature validation error")
             return
 
-        self.storage[kk.chid][msg[kk.chid]][kk.messages].append({
+        if self.check_seqnum(msg[kk.user], msg[kk.userseq], msg[kk.chid], msg[kk.chseq]) == False:
+            print("Sequnce number validation error")
+            return
+
+        if msg[kk.user] not in self.storage[kk.chs][msg[kk.chid]][kk.invites]:
+            print("Error: sender not in channel")
+            return
+
+
+        self.storage[kk.chs][msg[kk.chid]][kk.messages].append({
             kk.timestamp: msg[kk.timestamp],
             kk.sender: msg[kk.user],
             kk.text: pt_msg[kk.msg],

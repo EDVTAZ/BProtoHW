@@ -7,7 +7,6 @@ from messaging import common
 from StringKeys import kk
 from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
-from base64 import b64decode, b64encode
 
 
 def init_connection(session):
@@ -20,16 +19,17 @@ def init_connection(session):
     common.send_msg(sock, {
         kk.typ: kk.init_conn,
         kk.user: user,
-        kk.nonce: b64encode(rnd)
+        kk.nonce: rnd.decode()
     })
-    resp = json.loads( messaging.common.pkc_decrypt( b64decode(common.recv_message(sock)), session.encryption_key ) )
+    resp = common.recv_message(sock)
     if resp[kk.typ] != kk.init_key:
         print('Big bad happen.')
         exit(1)
     if messaging.common.check_msg_sig(session, resp, extra=rnd) != True:
         print('Invalid server signature while initiating connection!')
         exit(2)
-    session.symkey = resp[kk.key]
+    key = messaging.common.pkc_decrypt( b64decode(resp[kk.key]), session.encryption_key )
+    session.symkey = key
 
 
 def new_channel(session, channel):
@@ -38,7 +38,7 @@ def new_channel(session, channel):
     """
     session.create_chan_event.clear()
     key = b64encode(messaging.common.pkc_encrypt(get_random_bytes(
-        config.SECURE_CHANNEL_KEY_SIZE_BYTES), session.encryption_key))
+        config.SECURE_CHANNEL_KEY_SIZE_BYTES), session.encryption_key)).decode()
     msg = {
         kk.typ: kk.add_user,
         kk.inviter: session.user,
@@ -47,7 +47,7 @@ def new_channel(session, channel):
         kk.chkey: key
     }
     msg[kk.signature] = b64encode(
-        messaging.common.create_msg_sig(session, msg))
+        messaging.common.create_msg_sig(session, msg)).decode()
     messaging.common.send_msg(session.sock, msg, key=session.symkey)
 
 
@@ -57,7 +57,7 @@ def invite_user(session, invitee):
     """
     session.invite_event.clear()
     key = b64encode(messaging.common.pkc_encrypt(
-        session.get_channel_key(), session.get_encryption_cert(invitee)))
+        session.get_channel_key(), session.get_encryption_cert(invitee))).decode()
     msg = {
         kk.typ: kk.add_user,
         kk.inviter: session.user,
@@ -66,7 +66,7 @@ def invite_user(session, invitee):
         kk.chkey: key,
     }
     msg[kk.signature] = b64encode(
-        messaging.common.create_msg_sig(session, msg))
+        messaging.common.create_msg_sig(session, msg)).decode()
     messaging.common.send_msg(session.sock, msg, key=session.symkey)
 
 
@@ -85,7 +85,7 @@ def send_msg(session, msg):
     }
     msg = encrypt_comm(msg, session)
     msg[kk.signature] = b64encode(
-        messaging.common.create_msg_sig(session, msg))
+        messaging.common.create_msg_sig(session, msg)).decode()
     messaging.common.send_msg(session.sock, msg, key=session.symkey)
 
 
@@ -95,7 +95,7 @@ def GCM_create_header(chid, chseq, user, userseq):
         kk.chseq: chseq,
         kk.user: user,
         kk.userseq: userseq
-    })
+    }).encode()
 
 
 def encrypt_comm(msg, session):
@@ -107,9 +107,9 @@ def encrypt_comm(msg, session):
     ciphertext, tag = cipher.encrypt_and_digest(msg[kk.msg].encode())
 
     msg[kk.msg] = {
-        kk.nonce: b64encode(cipher.nonce),
-        kk.tag: b64encode(tag),
-        kk.ct: b64encode(ciphertext)
+        kk.nonce: b64encode(cipher.nonce).decode(),
+        kk.tag: b64encode(tag).decode(),
+        kk.ct: b64encode(ciphertext).decode()
     }
 
     return msg
@@ -128,6 +128,6 @@ def decrypt_comm(ogmsg, session):
         b64decode(msg[kk.msg][kk.tag])
     )
 
-    msg[kk.msg] = plaintext.encode()
+    msg[kk.msg] = plaintext.decode()
 
     return msg

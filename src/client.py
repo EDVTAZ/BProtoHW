@@ -16,12 +16,13 @@ from Crypto.PublicKey import RSA
 from Crypto.Hash import SHA256
 from Crypto.Signature import pss
 from base64 import b64decode, b64encode
+from utils import getch
 
 
 SESSION = None
 
 
-def run(address, storagePath):
+def run(address, storagePath, user, pw):
     global SESSION
 
     with open(storagePath, 'rt') as f:
@@ -32,7 +33,8 @@ def run(address, storagePath):
         address = (ip, int(port))
         sock.connect(address)
 
-        user, pw = frontend.get_user()
+        if user == None or pw == None:
+            user, pw = frontend.get_user()
 
         SESSION = Session(
             storage=storage, saddr=address, socket=sock, user=user, pw=pw)
@@ -49,8 +51,8 @@ def listen(sock):
 
     while True:
         msg = messaging.common.recv_message(sock, SESSION.symkey)
-        print(f"recvd: {msg}")
         mt = msg[kk.typ]
+
         if mt in (kk.add_user, kk.comms) and kk.timestamp not in msg:
             # no timestamp attached means this is a replayed message => drop it
             print('Replayed message detected')
@@ -68,7 +70,7 @@ def main_menu():
     global SESSION
 
     SESSION.replay_finished.wait()
-    choice = frontend.main_menu(SESSION.saddr, SESSION.get_channels())
+    choice = frontend.main_menu(SESSION.saddr, SESSION.user, SESSION.get_channels())
 
     while choice == None:
         new_chan = frontend.new_channel()  # check if there is no name collision TODO
@@ -83,7 +85,7 @@ def main_menu():
             SESSION.create_chan_event.wait()
 
         frontend.success()
-        choice = frontend.main_menu(SESSION.saddr, SESSION.get_channels())
+        choice = frontend.main_menu(SESSION.saddr, SESSION.user, SESSION.get_channels())
 
     chat(choice)
 
@@ -93,27 +95,27 @@ def chat(channel):
 
     SESSION.chan = channel
     frontend.display_channel(channel)
+    print(f"""Not displaying additional {
+                max(len(SESSION.storage[kk.chs][channel][kk.messages])-config.DISPLAY_HISTORY_SIZE, 0)
+            } messages from history!""")
+    for m in SESSION.storage[kk.chs][channel][kk.messages][-config.DISPLAY_HISTORY_SIZE:]:
+        frontend.display_message(m[kk.sender], m[kk.timestamp], m[kk.text])
 
     iii = ""
     while True:
-        iii += sys.stdin.read(1)
+        frontend.type_message(iii)
+        iii += getch()
 
-        if iii[-1] == '\n':
-            messaging.client.send_msg(SESSION, iii)
-            iii = ""
-        elif iii == ':exit':
+        if iii == ':exit':
             SESSION.persist()
-            exit(0)
+            os._exit(0)
         elif iii == ':invite':
             iii = ""
             user = frontend.invite_user()
             messaging.client.invite_user(SESSION, user)
-            SESSION.invite_event.wait()
-            if True:  # TODO check if user invite was successful
-                frontend.success()
-            else:
-                frontend.failure('of reasons')
-        elif iii[-1] == '\b':
-            iii = iii[0:-1]
-
-        frontend.type_message(iii)
+        elif iii[-1] == '|':
+            frontend.type_message("")
+            messaging.client.send_msg(SESSION, iii[:-1])
+            iii = ""
+        elif iii[-1] == '\b' or ord(iii[-1]) == 127:
+            iii = iii[:-2]

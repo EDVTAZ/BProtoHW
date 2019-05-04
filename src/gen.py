@@ -51,9 +51,9 @@ for u,p in zip(users, passwords):
     storage[kk.certs][u][kk.signing] = {}
     storage[kk.certs][u][kk.encryption] = {}
     storage[kk.certs][u][kk.signing][kk.public] = b64encode(psk.export_key()).decode()
-    storage[kk.certs][u][kk.signing][kk.private] = b64encode(psk.export_key(passphrase=p)).decode()
+    storage[kk.certs][u][kk.signing][kk.private] = b64encode(sk.export_key(passphrase=p)).decode()
     storage[kk.certs][u][kk.encryption][kk.public] = b64encode(pek.export_key()).decode()
-    storage[kk.certs][u][kk.encryption][kk.private] = b64encode(pek.export_key(passphrase=p)).decode()
+    storage[kk.certs][u][kk.encryption][kk.private] = b64encode(ek.export_key(passphrase=p)).decode()
 
 with open('storage.json', 'w') as f:
     json.dump(storage, f)

@@ -86,7 +86,7 @@ def check_msg_sig(session, msg, extra=None):
     payload.pop(kk.signature, None)
     payload.pop(kk.timestamp, None)
     if extra != None:
-        payload[kk.nonce] = extra
+        payload[kk.nonce] = extra.decode()
     return verify_sig(payload, b64.b64decode(msg[kk.signature]), session.get_signing_cert(select_cert(msg)))
 
 

@@ -66,14 +66,15 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
             self.current_session.user = user
             nonce = msg[kk.nonce]
 
-            key = get_random_bytes( config.SECURE_CHANNEL_KEY_SIZE_BYTES)
-            ekey = b64.b64encode(common.pkc_encrypt(key, self.current_session.encryption_key)).decode()
+            key = get_random_bytes( config.SECURE_CHANNEL_KEY_SIZE_BYTES )
+
+            ekey = b64.b64encode(common.pkc_encrypt(key, self.current_session.get_encryption_cert(user))).decode()
 
             msg = {
                 kk.typ: kk.init_key,
                 kk.key: ekey,
             }
-            msg[kk.signature] = b64.b64encode(common.create_msg_sig(self.current_session, msg), extra=nonce)
+            msg[kk.signature] = b64.b64encode(common.create_msg_sig(self.current_session, msg, extra=nonce)).decode()
             self.send(msg)
 
             self.current_session.symkey = key
@@ -84,10 +85,6 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     self.send_invites(c)
                     self.send_messages(c)
             self.send_replay_finished()
-
-#            user_sig = b64.b64decode(
-#                g_storage['certs'][user]['signing']['public'])
-#            self.current_session['user_sig'] = RSA.import_key(user_sig)
 
             return
 
