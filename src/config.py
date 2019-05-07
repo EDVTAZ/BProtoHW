@@ -1,3 +1,7 @@
+"""
+The config.py file contains some global parameters for the application, such as the length of the channel keys and the location for the server's private certificate. It also contains the string for the banner.
+"""
+
 class logo:
     text = '''
  _____                       _____        __     _____ _           _   

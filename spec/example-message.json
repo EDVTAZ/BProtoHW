@@ -1,42 +1,42 @@
 [
-    {
-        "type":"addUser",
-        "inviter":"userIDa",
-        "invitee":"userIDb",
-        "channelID":"channelID",
-        "channelkey":"AAAA====",
-        "signature":"BBBB====",
-        "timestamp": 12341234
+  {
+    "type": "addUser",
+    "inviter": "userIDa",
+    "invitee": "userIDb",
+    "channelID": "channelID",
+    "channelkey": "AAAA====",
+    "signature": "BBBB====",
+    "timestamp": 12341234
+  },
+  {
+    "type": "comms",
+    "channelID": "channelID",
+    "channelSeq": 123213,
+    "userID": "userIDa",
+    "userSeq": 123123,
+    "msg": {
+      "nonce": "AAA===",
+      "tag": "AAA====",
+      "ct": "AAA===="
     },
-    {
-        "type":"comms",
-        "channelID":"channelID",
-        "channelSeq":123213,
-        "userID":"userIDa",
-        "userSeq":123123,
-        "msg":{
-		"nonce":"AAA===",
-		"tag": "AAA====",
-		"ct": "AAA===="
-	},
-        "signature":"BBBB====",
-        "timestamp": 12341234
-    },    
-    {
-        "type":"initConn",
-        "userID":"userIDa",
-        "nonce":123123
-    },    
-    {
-        "type":"initKey",
-        "key":"base64encodedkey, size in config.py",
-        "signature":"BBBB===="
-    },
-    {
-        "type":"replayFinished"
-    },
-    {
-        "type":"error",
-        "error":"errorMsg"
-    }
+    "signature": "BBBB====",
+    "timestamp": 12341234
+  },
+  {
+    "type": "initConn",
+    "userID": "userIDa",
+    "nonce": 123123
+  },
+  {
+    "type": "initKey",
+    "key": "base64encodedkey, size in config.py",
+    "signature": "BBBB===="
+  },
+  {
+    "type": "replayFinished"
+  },
+  {
+    "type": "error",
+    "error": "errorMsg"
+  }
 ]

@@ -13,7 +13,7 @@ from Crypto.Random import get_random_bytes
 from Crypto.PublicKey import RSA
 from Crypto.Hash import SHA256
 from Crypto.Signature import pss
-from messaging import common, server
+from messaging import common
 from session import Session
 from StringKeys import kk
 
@@ -23,16 +23,26 @@ g_storage = {}
 g_storage_path = ''
 g_signing_key = None
 
+"""
+ThreadedTCPRequestHandler class is responsible for handling client requests. A new instance of this class is created automatically every time a new client connects. The new instance listens for incoming messages and handles them in accordance to their type. The secure connection is inited with initConn and initKey messages and if that is successful all subsequent messages are checked as specified and the ones that pass and need to be forwarded are broadcasted to the correct users.
+"""
+
 
 class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
+    """
+    The setup function initilizes the current user's Session object, and stores it in the session storage (containing the current connections).
+    """
+
     def setup(self):
         global g_storage
         global g_sessions
         global g_signing_key
         print(f'Connection from {self.client_address}')
 
-        self.current_session = Session(g_storage, self.client_address, self.request)
+        self.current_session = Session(
+            g_storage, self.client_address, self.request)
         self.current_session.signing_key = g_signing_key
+        self.current_session.storage[kk.chs] = g_storage[kk.chs]
 
         g_sessions.append(self.current_session)
 
@@ -66,21 +76,23 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
             self.current_session.user = user
             nonce = msg[kk.nonce]
 
-            key = get_random_bytes( config.SECURE_CHANNEL_KEY_SIZE_BYTES )
+            key = get_random_bytes(config.SECURE_CHANNEL_KEY_SIZE_BYTES)
 
-            ekey = b64.b64encode(common.pkc_encrypt(key, self.current_session.get_encryption_cert(user))).decode()
+            ekey = b64.b64encode(common.pkc_encrypt(
+                key, self.current_session.get_encryption_cert(user))).decode()
 
             msg = {
                 kk.typ: kk.init_key,
                 kk.key: ekey,
             }
-            msg[kk.signature] = b64.b64encode(common.create_msg_sig(self.current_session, msg, extra=nonce)).decode()
+            msg[kk.signature] = b64.b64encode(common.create_msg_sig(
+                self.current_session, msg, extra=nonce)).decode()
             self.send(msg)
 
             self.current_session.symkey = key
 
             # Check if user in any channel and Send channel to user
-            for ck, c in g_storage[kk.chs].items():
+            for channel_key, c in g_storage[kk.chs].items():
                 if user in c[kk.invites]:
                     self.send_invites(c)
                     self.send_messages(c)
@@ -93,10 +105,10 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
             return
 
         if t == kk.add_user:
-            cid = msg[kk.chid]
-            ck = msg[kk.chkey]
-            ir = msg[kk.inviter]
-            ie = msg[kk.invitee]
+            channel_id = msg[kk.chid]
+            channel_key = msg[kk.chkey]
+            inviter = msg[kk.inviter]
+            invitee = msg[kk.invitee]
 
             timestamp = time.time()
             msg[kk.timestamp] = timestamp
@@ -107,66 +119,74 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
             # Create channelID if not already exists
             ch = None
-            if not cid in g_storage[kk.chs]:
-                if ie != ir:
+            if not channel_id in g_storage[kk.chs]:
+                if invitee != inviter:
                     self.send_error('Channel does not exist')
                     return
                 ch = {
-                    kk.chkey: ck,
+                    kk.chkey: channel_key,
                     kk.invites: {
-                        ie: {
-                            kk.inviter: ir,
+                        invitee: {
+                            kk.inviter: inviter,
                             kk.payload: msg,
                             kk.timestamp: timestamp
                         }
                     },
                     kk.messages: []
                 }
-                g_storage[kk.chs][cid] = ch
+                g_storage[kk.chs][channel_id] = ch
             else:
-                ch = g_storage[kk.chs][cid]
+                ch = g_storage[kk.chs][channel_id]
                 invites = ch[kk.invites]
                 # Check if inviter is in channelID
-                if not ir in invites:
-                    self.send_error(f'Inviter not in channel {cid}')
+                if not inviter in invites:
+                    self.send_error(f'Inviter not in channel {channel_id}')
                     return
 
                 # Try add invitee to channelID
-                if not ie in invites:
-                    invites[ie] = {
-                        kk.inviter: ir,
+                if not invitee in invites:
+                    invites[invitee] = {
+                        kk.inviter: inviter,
                         kk.payload: msg,
                         kk.timestamp: timestamp
                     }
                 else:
-                    self.send_error(f'Invitee is already in channel {cid}')
+                    self.send_error(
+                        f'Invitee is already in channel {channel_id}')
                     return
 
+            # Send previous invites to new member
+            self.send_invites(ch, invitee)
+            # Send previous messages to new member
+            self.send_messages(ch, invitee)
+            # Replay done
+            self.send_replay_finished(invitee)
             # Broadcast original message to members of channelID
             self.send_broadcast(msg, ch)
-            # Send previous invites to new member
-            self.send_invites(ch, ie)
-            # Send previous messages to new member
-            self.send_messages(ch, ie)
-            # Replay done
-            self.send_replay_finished(ie)
 
         elif t == kk.comms:
             timestamp = time.time()
             msg[kk.timestamp] = timestamp
             user = msg[kk.user]
             text = msg[kk.msg]
-            cid = msg[kk.chid]
+            channel_id = msg[kk.chid]
+            channel_seq = msg[kk.chseq]
+            user_seq = msg[kk.userseq]
 
             # Check if channel exists
-            if cid not in g_storage[kk.chs]:
+            if channel_id not in g_storage[kk.chs]:
                 self.send_error('Channel does not exist')
                 return
-            ch = g_storage[kk.chs][cid]
+            ch = g_storage[kk.chs][channel_id]
 
             # Check if user is in channel
             if user not in ch[kk.invites]:
                 self.send_error('User not part of channel')
+                return
+
+            # Check seqnums
+            if self.current_session.check_seqnum(user, user_seq, channel_id, channel_seq):
+                self.send_error('Sequence number very bad.')
                 return
 
             # Store message
@@ -183,6 +203,10 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
         else:
             print('Unknown Message Type')
 
+    """
+    Sends the given message to the specified session, or the current session if unspecified. Secure channel is used if a key has been established.
+    """
+
     def send(self, msg, session=None):
         sock = self.request if session is None else session.sock
         key = self.current_session.symkey if session is None else session.symkey
@@ -195,6 +219,10 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
         print('[-->] error')
         self.send({kk.typ: kk.error, kk.error: msg})
 
+    """
+    Sends the invites contained in the given channel to the specified user, or the current user if unspecified. 
+    """
+
     def send_invites(self, channel, user=None):
         sess = self.get_session(user)
         if sess is None:
@@ -204,6 +232,10 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
         for i in channel[kk.invites].values():
             self.send(i[kk.payload], sess)
 
+    """
+    Sends the messages contained in the given channel to the specified user, or the current user if unspecified. 
+    """
+
     def send_messages(self, channel, user=None):
         sess = self.get_session(user)
         if sess is None:
@@ -212,6 +244,10 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
         print('[-->] messages to', user)
         for i in channel[kk.messages]:
             self.send(i[kk.payload], sess)
+
+    """
+    The send_replay_finished signals the given user (or the current user if unspecified) that the replaying of messages and invites are finished.
+    """
 
     def send_replay_finished(self, user=None):
         sess = self.get_session(user)
@@ -232,26 +268,19 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
     def send_broadcast(self, msg, channel=None):
         for sess in g_sessions:
-            if channel is None or self.current_session.user in channel[kk.invites]:
+            if channel is None or sess.user in channel[kk.invites]:
+                # print('user:', self.current_session.user)
+                # print('cch:', channel)
                 self.send(msg, sess)
-
-    def checks_sign(self, msg, signature_b64):
-        h = SHA256.new(msg)
-        verifier = pss.new(self.current_session['user_sig'])
-        try:
-            verifier.verify(h, b64.b64decode(signature_b64))
-            return True
-        except (ValueError, TypeError):
-            return False
-
-    def sign(self, msg):
-        h = SHA256.new(msg)
-        signature = pss.new(g_signing_key).sign(h)
-        return b64.b64encode(signature)
 
 
 class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     pass
+
+
+"""
+The run function loads the storage and the server certificates. Starts a TCP server, that automatically spawns a new thread for every incoming connection. 
+"""
 
 
 def run(address, storage_path):
@@ -296,10 +325,11 @@ def run(address, storage_path):
         server.shutdown()
 
 
+"""
+The persist function in the server.py file *actually* persists the storage object, storing all channels, messages and invites.
+"""
+
+
 def persist():
     with open(g_storage_path, 'wt') as f:
         json.dump(g_storage, f, indent=2)
-
-
-if __name__ == '__main__':
-    run('0.0.0.0:42069', 'ss.json')

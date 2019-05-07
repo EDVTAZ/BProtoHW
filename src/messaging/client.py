@@ -11,7 +11,7 @@ from Crypto.Random import get_random_bytes
 
 def init_connection(session):
     """
-    initializes secure channel, returns with the aggreed key
+    Initializes secure channel, returns with the aggreed key.
     """
     user = session.user
     sock = session.sock
@@ -28,13 +28,14 @@ def init_connection(session):
     if messaging.common.check_msg_sig(session, resp, extra=rnd) != True:
         print('Invalid server signature while initiating connection!')
         exit(2)
-    key = messaging.common.pkc_decrypt( b64decode(resp[kk.key]), session.encryption_key )
+    key = messaging.common.pkc_decrypt(
+        b64decode(resp[kk.key]), session.encryption_key)
     session.symkey = key
 
 
 def new_channel(session, channel):
     """
-    create new channel called <name>
+    Sends message to create new channel.
     """
     session.create_chan_event.clear()
     key = b64encode(messaging.common.pkc_encrypt(get_random_bytes(
@@ -53,7 +54,7 @@ def new_channel(session, channel):
 
 def invite_user(session, invitee):
     """
-    invite user with name to channel channel
+    Sends message to invite user.
     """
     session.invite_event.clear()
     key = b64encode(messaging.common.pkc_encrypt(
@@ -72,7 +73,7 @@ def invite_user(session, invitee):
 
 def send_msg(session, msg):
     """
-    send message to channel
+    Send text message to channel.
     """
     useq, chseq = session.get_seqnum()
     msg = {
@@ -89,6 +90,11 @@ def send_msg(session, msg):
     messaging.common.send_msg(session.sock, msg, key=session.symkey)
 
 
+"""
+Serializes GCM header data into bytesarray.
+"""
+
+
 def GCM_create_header(chid, chseq, user, userseq):
     return json.dumps({
         kk.chid: chid,
@@ -96,6 +102,11 @@ def GCM_create_header(chid, chseq, user, userseq):
         kk.user: user,
         kk.userseq: userseq
     }).encode()
+
+
+"""
+Symmetrical encryption used to protect channel messages with AES-GCM.
+"""
 
 
 def encrypt_comm(msg, session):

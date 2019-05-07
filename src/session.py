@@ -16,7 +16,16 @@ from Crypto.Hash import SHA256
 from Crypto.Signature import pss
 from base64 import b64decode, b64encode
 
+"""
+The Session class is responsible for maintining the storage object, mostly with regards to client side functionality (some of which is also needed on the server side). It implements functions for handling incoming messages from the server and updating the storage object in acordance. It also implements getter and setter functionalities for some of the most common accesses into the storage object.
+"""
+
+
 class Session():
+    """
+    In the constructor, we load all keys into the storage object, decrypt the user's private keys and initiate all known RSA keys.
+    """
+
     def __init__(self, storage, saddr, socket, user=None, pw=None):
         storage = copy.deepcopy(storage)
         storage[kk.chs] = dict()
@@ -45,7 +54,7 @@ class Session():
         self.replay_finished.clear()
 
     def decrypt_privkeys(self):
-        try: 
+        try:
             if self.pw == None:
                 return None, None
             rsk = b64decode(self.storage[kk.certs]
@@ -95,11 +104,16 @@ class Session():
         except:
             return None
 
+    """
+    The check_seqnum function checks whether the supplied sequence numbers are valid, and if so, it updates afore mentioned sequence numbers accordingly.
+    """
+
     def check_seqnum(self, user, userseq, channel, channelseq):
         try:
             if userseq <= self.storage[kk.chs][channel][kk.invites][user][kk.seqnum]:
                 return False
-            if channelseq <= self.storage[kk.chs][channel][kk.seqnum]:
+            # allow collision for edgecases, when two users send a message simultaneously (userseq is correct but channelseq is equal)
+            if channelseq < self.storage[kk.chs][channel][kk.seqnum]:
                 return False
 
             self.storage[kk.chs][channel][kk.invites][user][kk.seqnum] = userseq
@@ -112,6 +126,10 @@ class Session():
 
     def get_channels(self):
         return list(self.storage[kk.chs].keys())
+
+    """
+    The add_user function handles the add_user message.
+    """
 
     def add_user(self, msg):
         if not messaging.common.check_msg_sig(self, msg):
@@ -150,6 +168,10 @@ class Session():
         if msg[kk.chid] == self.chan:
             frontend.display_invite(msg)
 
+    """
+    The incomm function handles the comms type messages (incomming text message from one of the channels users)
+    """
+
     def incomm(self, msg):
         try:
             pt_msg = messaging.client.decrypt_comm(msg, self)
@@ -158,7 +180,7 @@ class Session():
             return
 
         if not messaging.common.check_msg_sig(self, msg):
-            print("Sender signature validation error")
+            print('S͎͙͢e̶̟̻̭̫̺͙ṉ͈̭͇͝d̰̜̯̲͉̳͇e̫r̼͓͝ͅ ̷̖s̞i͇͚̖͖͖͚̣gn̹a̳t͠u̫͍̪̫̻ͅr̩͖e͉̜ ̸v̠̟̯̦a̫͚̦̘̕l̹̲͔̪̣̀i̙̲͖̱͠d͎̰͚̻a͖̟̣ţ͚i̥o̫̪͉̠̗̙n̬̮͕͕ͅ ̺e̴̫͉̠̟ͅr͓r̟͍̹o̯͚̻͎͖̲̣͟r̟̩̞')
             return
 
         if self.check_seqnum(msg[kk.user], msg[kk.userseq], msg[kk.chid], msg[kk.chseq]) == False:
@@ -169,7 +191,6 @@ class Session():
             print("Error: sender not in channel")
             return
 
-
         self.storage[kk.chs][msg[kk.chid]][kk.messages].append({
             kk.timestamp: msg[kk.timestamp],
             kk.sender: msg[kk.user],
@@ -179,6 +200,10 @@ class Session():
         if self.chan == msg[kk.chid]:
             frontend.display_message(
                 msg[kk.user], msg[kk.timestamp], pt_msg[kk.msg])
+
+    """
+    Does nothing
+    """
 
     def persist(self):
         pass

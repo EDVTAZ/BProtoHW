@@ -1,3 +1,7 @@
+"""
+The utils.py file contains the implementation for getch, a function that gets a single character from stdin (and unlike sys.stdin.read(1) it doesn't wait for an endline to flush the buffer).
+"""
+
 def nest(obj, path):
     """
     create <path> in <obj> nested dictionary

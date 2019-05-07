@@ -1,7 +1,15 @@
-import sys, os, datetime
+import sys
+import os
+import datetime
 from StringKeys import kk
 
+"""
+The frontend.py file contains code related to the frontend of the application. It's function are designed in a way, that if for example a GUI interface instead of the current CLI interface is used, only this file would need to be modified.
+"""
+
+# CACHED_MSG is used to store the users input in a channel, so if a new message arrives and overwrites the in progress text input, it can be restored
 CACHED_MSG = ""
+
 
 def main_menu(address, user, channels):
     print()
@@ -45,6 +53,7 @@ def failure(reason):
     print(f"Operation failed, because {reason}...")
 
 
+# Displays the login screen and requests the user's credentials then returns them to the caller
 def get_user():
     print("Please enter your user: ", end='')
     n = input()
@@ -57,11 +66,13 @@ def display_channel(name):
     print("Send you message by typing '|', invite a friend by typing ':invite' and exit by typing ':exit'")
     print()
 
+
 def display_message(sender, timestamp, msg):
     global CACHED_MSG
     print(f"\r[{datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')}] {sender} :: {msg}")
     print()
     type_message(CACHED_MSG)
+
 
 def display_invite(msg):
     global CACHED_MSG

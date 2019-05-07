@@ -18,8 +18,15 @@ from Crypto.Signature import pss
 from base64 import b64decode, b64encode
 from utils import getch
 
+"""
+The client.py file contains code controlling the main execution flow of the client. The run function needs to be called to initiate a client.
+"""
 
 SESSION = None
+
+"""
+The run function loads the storage, connects to the server, creates a new Session object, that is used to start the main menu on a new thread and listen for incoming messages on the original thread.
+"""
 
 
 def run(address, storagePath, user, pw):
@@ -46,31 +53,48 @@ def run(address, storagePath, user, pw):
         listen(sock)
 
 
+"""
+The listen function handles incomming messages from the server, and calls the respective handler for the message on the session object.
+"""
+
+
 def listen(sock):
     global SESSION
 
     while True:
-        msg = messaging.common.recv_message(sock, SESSION.symkey)
-        mt = msg[kk.typ]
+        try:
+            msg = messaging.common.recv_message(sock, SESSION.symkey)
+            mt = msg[kk.typ]
 
-        if mt in (kk.add_user, kk.comms) and kk.timestamp not in msg:
-            # no timestamp attached means this is a replayed message => drop it
-            print('Replayed message detected')
-            continue
+            if mt in (kk.add_user, kk.comms) and kk.timestamp not in msg:
+                # no timestamp attached means this is a replayed message => drop it
+                print('Replayed message detected')
+                continue
 
-        if mt == kk.add_user:
-            SESSION.add_user(msg)
-        elif mt == kk.comms:
-            SESSION.incomm(msg)
-        elif mt == kk.replay_finished:
-            SESSION.replay_finished.set()
+            if mt == kk.add_user:
+                SESSION.add_user(msg)
+            elif mt == kk.comms:
+                SESSION.incomm(msg)
+            elif mt == kk.replay_finished:
+                SESSION.replay_finished.set()
+            elif mt == kk.error:
+                print(f'Server says nono:\n{msg}')
+        except Exception as e:
+            print('That\'s a big nono.')
+            print(e)
+
+
+"""
+The main_menu function lists known channels, handles the execution of creating new channels and joining existing channels.
+"""
 
 
 def main_menu():
     global SESSION
 
     SESSION.replay_finished.wait()
-    choice = frontend.main_menu(SESSION.saddr, SESSION.user, SESSION.get_channels())
+    choice = frontend.main_menu(
+        SESSION.saddr, SESSION.user, SESSION.get_channels())
 
     while choice == None:
         new_chan = frontend.new_channel()  # check if there is no name collision TODO
@@ -85,9 +109,15 @@ def main_menu():
             SESSION.create_chan_event.wait()
 
         frontend.success()
-        choice = frontend.main_menu(SESSION.saddr, SESSION.user, SESSION.get_channels())
+        choice = frontend.main_menu(
+            SESSION.saddr, SESSION.user, SESSION.get_channels())
 
     chat(choice)
+
+
+"""
+The chat function handles input from the user in a channel. Possible actions are sending messages, inviting users and exiting the application.
+"""
 
 
 def chat(channel):
@@ -96,7 +126,8 @@ def chat(channel):
     SESSION.chan = channel
     frontend.display_channel(channel)
     print(f"""Not displaying additional {
-                max(len(SESSION.storage[kk.chs][channel][kk.messages])-config.DISPLAY_HISTORY_SIZE, 0)
+                max(len(SESSION.storage[kk.chs][channel]
+                    [kk.messages])-config.DISPLAY_HISTORY_SIZE, 0)
             } messages from history!""")
     for m in SESSION.storage[kk.chs][channel][kk.messages][-config.DISPLAY_HISTORY_SIZE:]:
         frontend.display_message(m[kk.sender], m[kk.timestamp], m[kk.text])
@@ -105,10 +136,14 @@ def chat(channel):
     while True:
         frontend.type_message(iii)
         iii += getch()
+        frontend.type_message(iii)
 
         if iii == ':exit':
             SESSION.persist()
-            os._exit(0)
+            try:
+                sys.exit(0)
+            except SystemExit:
+                os._exit(0)
         elif iii == ':invite':
             iii = ""
             user = frontend.invite_user()

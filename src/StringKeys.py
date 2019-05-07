@@ -1,3 +1,7 @@
+"""
+The StringKeys.py file contains a class with static string constants, used in dictionary accesses, to lower the risk of typos.
+"""
+
 class kk():
     chs = 'channels'
     chkey = 'channelkey'
