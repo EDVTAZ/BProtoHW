@@ -27,7 +27,7 @@
 <strong>Székely Gábor</strong> <em>EDVTAZ</em></p>
 <h2 id="changes-to-original-specification">Changes to original specification</h2>
 <p>In response to the feedback provided to the specification, we made the following changes: we trust the server to apply timestamps to all messages, and additionally establish a secure channel between each client and the server. If the server isn't compromised, the timestamps will be protected by AES-GCM, and thus every action displayed to the client will be marked with its time of the server originally receiving it. The messages sent will not be possible to be reordered by an attacker. The server broadcasts every message it receives to each participant, including the sender, essentially serving as a confirmation, that the message was received and accepted, thus if there was a sequence number collision and the message was dropped, it can be resent. If the client receives a message without a timestamp, it was not sent by the server, since the server applies the timestamps and can be dropped. Also, to allow for edgecases, where two users send a message at the same moment, we added a userwide counter.</p>
-<p>If the server is compromised, it can't decrypt messages in channels, however by colluding with a channel member, it is possible to achieve the order of messages to appear different for different users. This is possible, since the server controls the timestamps, and the malicious user can leave a gap in sequence numbers, that she can later fill with messages.</p>
+<p>If the server is compromised, it can't decrypt messages in channels, however by colliding with a channel member, it is possible to achieve the order of messages to appear different for different users. This is possible, since the server controls the timestamps, and the malicious user can leave a gap in sequence numbers, that she can later fill with messages.</p>
 <h2 id="data-structures">Data structures</h2>
 <p>The following json documents are examples for the data structures used for data storage and messaging.</p>
 <h3 id="example-message-format">Example message format</h3>
@@ -124,7 +124,7 @@
 <h2 id="chatpy"><code>chat.py</code></h2>
 <p>The <code>chat.py</code> contains the entry point for the application. There are three different modes. One for starting the server, one for the client and one for generationg necessary files for normal operation. If the generate mode is chosen, the users and their respective passwords need to be specified. We used the <code>argparse</code> module.</p>
 <h2 id="clientpy"><code>client.py</code></h2>
-<p>The <a href="http://client.py">client.py</a> file contains code controlling the main execution flow of the client. The run function needs to be called to initiate a client.</p>
+<p>The <code>client.py</code> file contains code controlling the main execution flow of the client. The run function needs to be called to initiate a client.</p>
 <ul>
 <li>The <code>run</code> function loads the storage, connects to the server, creates a new Session object, that is used to start the main menu on a new thread and listen for incoming messages on the original thread.</li>
 <li>The listen function handles incomming messages from the server, and calls the respective handler for the message on the session object.</li>
@@ -132,7 +132,7 @@
 <li>The <code>chat</code> function handles input from the user in a channel. Possible actions are sending messages, inviting users and exiting the application.</li>
 </ul>
 <h2 id="serverpy"><code>server.py</code></h2>
-<p><code>ThreadedTCPRequestHandler</code> class is responsible for handling client requests. A new instance of this class is created automatically every time a new client connects. The new instance listens for incoming messages and handles them in accordance to their type. The secure connection is inited with initConn and initKey messages and if that is successful all subsequent messages are checked as specified and the ones that pass and need to be forwarded are broadcasted to the correct users.</p>
+<p><code>ThreadedTCPRequestHandler</code> class is responsible for handling client requests. A new instance of this class is created automatically every time a new client connects. The new instance listens for incoming messages and handles them in accordance to their type. The secure connection is initiated with initConn and initKey messages and if that is successful all subsequent messages are checked as specified and the ones that pass and need to be forwarded are broadcasted to the correct users.</p>
 <ul>
 <li>The <code>run</code> function loads the storage and the server certificates. Starts a TCP server, that automatically spawns a new thread for every incoming connection.</li>
 <li>The <code>setup</code> function initilizes the current user's Session object, and stores it in the session storage (containing the current connections).</li>
@@ -140,7 +140,7 @@
 <li>The <code>send_invites</code> function sends the invites contained in the given channel to the specified user, or the current user if unspecified.</li>
 <li>The <code>send_messages</code> function sends the messages contained in the given channel to the specified user, or the current user if unspecified.</li>
 <li>The <code>send_replay_finished</code> function signals the given user (or the current user if unspecified) that the replaying of messages and invites are finished.</li>
-<li>The <code>persist</code> function in the <a href="http://server.py">server.py</a> file <em>actually</em> persists the storage object, storing all channels, messages and invites.</li>
+<li>The <code>persist</code> function in the <code>server.py</code> file <em>actually</em> persists the storage object, storing all channels, messages and invites.</li>
 </ul>
 <h2 id="configpy"><code>config.py</code></h2>
 <p>The <code>config.py</code> file contains some global parameters for the application, such as the length of the channel keys and the location for the server's private certificate. It also contains the string for the banner.</p>
@@ -153,13 +153,13 @@
 <h2 id="genpy"><code>gen.py</code></h2>
 <p>The <code>gen.py</code> file contains the code responsible for generating the certificates and constructing the storage file, that is used by all instances of the application, to load the respective certificates for all users. The private keys are contained protected by a passphrase, the password of the user.</p>
 <h2 id="sessionpy"><code>session.py</code></h2>
-<p>The <code>Session</code> class is responsible for maintining the storage object, mostly with regards to client side functionality (some of which is also needed on the server side). It implements functions for handling incoming messages from the server and updating the storage object in acordance. It also implements getter and setter functionalities for some of the most common accesses into the storage object.</p>
+<p>The <code>Session</code> class is responsible for maintining the storage object, mostly with regards to client side functionality (some of which is also needed on the server side). It implements functions for handling incoming messages from the server and updating the storage object in accordance. It also implements getter and setter functionalities for some of the most common accesses into the storage object.</p>
 <ul>
 <li>In the constructor, we load all keys into the storage object, decrypt the user's private keys and initiate all known RSA keys.</li>
-<li>The <code>check_seqnum</code> function checks whether the supplied sequence numbers are valid, and if so, it updates afore mentioned sequence numbers accordingly.</li>
+<li>The <code>check_seqnum</code> function checks whether the supplied sequence numbers are valid, and if so, it updates the afore mentioned sequence numbers accordingly.</li>
 <li>The <code>add_user</code> function handles the <code>add_user</code> message.</li>
 <li>The <code>incomm</code> function handles the <code>comms</code> type messages (incomming text message from one of the channels users)</li>
-<li>The <code>persist</code> function Does nothing</li>
+<li>The <code>persist</code> function does nothing</li>
 </ul>
 <h2 id="stringkeyspy"><code>StringKeys.py</code></h2>
 <p>The <code>StringKeys.py</code> file contains a class with static string constants, used in dictionary accesses, to lower the risk of typos.</p>
@@ -169,18 +169,18 @@
 <li>The <code>_Getch</code> function Gets a single character from standard input. Does not echo to the screen.</li>
 </ul>
 <h2 id="messaging"><code>messaging</code></h2>
-<p>The messaging module contains code related to handle l0w-level network communication and encryption.</p>
+<p>The messaging module contains code related to handle low-level network communication and encryption.</p>
 <h3 id="commonpy"><code>common.py</code></h3>
-<p>The file contains methods used by the client as well as the server too.</p>
+<p>The file contains methods used by the client as well as the server.</p>
 <ul>
 <li>The <code>recv_all</code> function receives exactly n bytes</li>
-<li>The <code>recv_message</code> function receives a single messages and decrypts it if key is given.</li>
-<li>The <code>send_msg</code> function sends a single messages and encrypts it if key is given.</li>
+<li>The <code>recv_message</code> function receives a single message and decrypts it if the key is given.</li>
+<li>The <code>send_msg</code> function sends a single message and encrypts it if the key is given.</li>
 <li>The <code>decrypt_sym</code> function decrypts AES-GCM symmetrical encryption with the given key. Used for server-client secure channel.</li>
 <li>The <code>encrypt_sym</code> function encrypts with AES-GCM symmetrical encryption with the given key. Used for server-client secure channel.</li>
 <li>The <code>pack_msg</code> function packs message, prefixing it with its length in 4 bytes big-endian.</li>
 <li>The <code>verify_sig</code> function verifies signature on a json payload with cert.</li>
-<li>The <code>check_msg_sig</code> function verifies signature on a message, automatically selecting the correct certificate based on the type of the message and it's contents. If the extra parameter is given, it is also inserted into the copy of msg before signing (used for implicit nonce signing).</li>
+<li>The <code>check_msg_sig</code> function verifies signature on a message, automatically selecting the correct certificate based on the type of the message and its contents. If the extra parameter is given, it is also inserted into the copy of msg before signing (used for implicit nonce signing).</li>
 <li>The <code>create_sig</code> function creates a signature on a json payload with cert.</li>
 <li>The <code>create_msg_sig</code> function creates signature on a message, with the private certificate of the current user. If the extra parameter is given, it is also inserted into the copy of msg before signing (used for implicit nonce signing).</li>
 <li>The <code>select_cert</code> function selects the correct user to sign the message for.</li>
@@ -189,14 +189,12 @@
 <h3 id="clientpy-1"><code>client.py</code></h3>
 <p>The file contains client methods for messaging.</p>
 <ul>
-<li>The <code>init_connection</code> function tnitializes secure channel, returns with the aggreed key.</li>
+<li>The <code>init_connection</code> function initializes secure channel, returns with the agreed key.</li>
 <li>The <code>new_channel</code> function sends message to create new channel.</li>
 <li>The <code>invite_user</code> function sends message to invite user.</li>
 <li>The <code>send_msg</code> function send text message to channel.</li>
 <li>The <code>GCM_create_header</code> function serializes GCM header data into bytesarray.</li>
 <li>The <code>encrypt_comm</code> and <code>decrypt_comm</code> functions handles symmetrical encryption used to protect channel messages with AES-GCM.</li>
 </ul>
-<p>.</p>
-
     </body>
     </html>

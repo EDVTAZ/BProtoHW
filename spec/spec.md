@@ -22,7 +22,7 @@ In addition to the requirements defined in the homework handout, we specify the 
 - If the supplied password is correct, the list of channels (that the user is part of) is displayed
 - User can go back to main menu from any sub-menu
 - User can create new channel or select existing one to enter
-  - If new channel option is selected: \* A prompt is displayed for the new channel name
+  - If new channel option is selected: A prompt is displayed for the new channel name
   - If an existing channel is selected:
     - Message history is displayed
     - New messages can be sent
